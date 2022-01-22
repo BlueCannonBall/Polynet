@@ -3,19 +3,19 @@
 
 // Network includes
 #ifdef _WIN32
-// See http://stackoverflow.com/questions/12765743/getaddrinfo-on-win32
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0501 // Windows XP
-#endif
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
+    // See http://stackoverflow.com/questions/12765743/getaddrinfo-on-win32
+    #ifndef _WIN32_WINNT
+        #define _WIN32_WINNT 0x0501 // Windows XP
+    #endif
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
 #else
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
+    #include <arpa/inet.h>
+    #include <netdb.h>
+    #include <sys/socket.h>
+    #include <sys/types.h>
+    #include <unistd.h>
 #endif
 
 // Other includes
@@ -28,22 +28,24 @@
 #include <string>
 
 // Bridged constants
-#ifndef _WIN32
-#define PN_ERROR -1
+#ifdef _WIN32
+    #define PN_ERROR          SOCKET_ERROR
+    #define PN_INVALID_SOCKET INVALID_SOCKET
 
-#define PN_SD_RECEIVE SHUT_RD
-#define PN_SD_SEND    SHUT_WR
-#define PN_SD_BOTH    SHUT_RDWR
+    #ifndef ssize_t
+        #define ssize_t SSIZE_T
+    #endif
+
+    #define PN_SD_RECEIVE SD_RECEIVE
+    #define PN_SD_SEND    SD_SEND
+    #define PN_SD_BOTH    SD_BOTH
 #else
-#define PN_ERROR SOCKET_ERROR
+    #define PN_ERROR          -1
+    #define PN_INVALID_SOCKET PN_ERROR
 
-#ifndef ssize_t
-#define ssize_t SSIZE_T
-#endif
-
-#define PN_SD_RECEIVE SD_RECEIVE
-#define PN_SD_SEND    SD_SEND
-#define PN_SD_BOTH    SD_BOTH
+    #define PN_SD_RECEIVE SHUT_RD
+    #define PN_SD_SEND    SHUT_WR
+    #define PN_SD_BOTH    SHUT_RDWR
 #endif
 #define PN_OK 0
 
@@ -54,12 +56,12 @@
 #define PN_EBADADDRS 3
 
 namespace pn {
-#ifndef _WIN32
-    typedef int sockfd_t;
-    typedef ::socklen_t socklen_t;
-#else
+#ifdef _WIN32
     typedef SOCKET sockfd_t;
     typedef int socklen_t;
+#else
+    typedef int sockfd_t;
+    typedef ::socklen_t socklen_t;
 #endif
 
     namespace detail {
@@ -195,8 +197,8 @@ namespace pn {
     inline int getaddrinfo(const std::string& host, const std::string& port, const struct addrinfo* hints, struct addrinfo** ret) {
         int result;
         if ((result = ::getaddrinfo(host.c_str(), port.c_str(), hints, ret)) != PN_OK) {
-            detail::set_last_error(PN_EAI);
             detail::set_last_gai_error(result);
+            detail::set_last_error(PN_EAI);
             return PN_ERROR;
         }
         return result;
@@ -292,11 +294,7 @@ namespace pn {
 
             struct addrinfo* ai_it;
             for (ai_it = ai_list; ai_it != NULL; ai_it = ai_it->ai_next) {
-#ifndef _WIN32
-                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_ERROR) {
-#else
-                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == INVALID_SOCKET) {
-#endif
+                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_INVALID_SOCKET) {
                     continue;
                 }
 
@@ -338,11 +336,7 @@ namespace pn {
         }
 
         int bind(struct sockaddr* addr, socklen_t addrlen) {
-#ifndef _WIN32
-            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_ERROR) {
-#else
-            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == INVALID_SOCKET) {
-#endif
+            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_INVALID_SOCKET) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
@@ -392,11 +386,7 @@ namespace pn {
 
             struct addrinfo* ai_it;
             for (ai_it = ai_list; ai_it != NULL; ai_it = ai_it->ai_next) {
-#ifndef _WIN32
-                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_ERROR) {
-#else
-                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == INVALID_SOCKET) {
-#endif
+                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_INVALID_SOCKET) {
                     continue;
                 }
 
@@ -430,11 +420,7 @@ namespace pn {
         }
 
         int connect(struct sockaddr* addr, socklen_t addrlen) {
-#ifndef _WIN32
-            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_ERROR) {
-#else
-            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == INVALID_SOCKET) {
-#endif
+            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_INVALID_SOCKET) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
@@ -509,11 +495,7 @@ namespace pn {
                     struct sockaddr peer_addr;
                     socklen_t peer_addr_size = sizeof(peer_addr);
                     sockfd_t cfd;
-#ifndef _WIN32
-                    if ((cfd = accept(this->fd, &peer_addr, &peer_addr_size)) == PN_ERROR) {
-#else
-                    if ((cfd = accept(this->fd, &peer_addr, &peer_addr_size)) == INVALID_SOCKET) {
-#endif
+                    if ((cfd = accept(this->fd, &peer_addr, &peer_addr_size)) == PN_INVALID_SOCKET) {
                         detail::set_last_socket_error(detail::get_last_system_error());
                         detail::set_last_error(PN_ESOCKET);
                         return PN_ERROR;

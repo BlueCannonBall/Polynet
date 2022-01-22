@@ -35,7 +35,7 @@ IncludeBlocks: Merge
 IndentCaseLabels: true
 IndentExternBlock: Indent
 IndentGotoLabels: true
-IndentPPDirectives: None
+IndentPPDirectives: BeforeHash
 IndentWrappedFunctionNames: false
 InsertTrailingCommas: Wrapped
 KeepEmptyLinesAtTheStartOfBlocks: false
