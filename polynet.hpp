@@ -361,6 +361,8 @@ namespace pn {
                 return PN_ERROR;
             }
 
+            this->addr = *addr;
+            this->addrlen = addrlen;
             return PN_OK;
         }
     };
@@ -444,6 +446,8 @@ namespace pn {
                 return PN_ERROR;
             }
 
+            this->addr = *addr;
+            this->addrlen = addrlen;
             return PN_OK;
         }
     };
