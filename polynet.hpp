@@ -6,8 +6,10 @@
     #ifndef _WIN32_WINNT
         #define _WIN32_WINNT 0x0502 // Windows Server 2003
     #endif
+
     #include <winsock2.h>
     #include <ws2tcpip.h>
+
     #pragma comment(lib, "ws2_32.lib")
 #else
     #include <arpa/inet.h>
