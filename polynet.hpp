@@ -67,14 +67,20 @@ namespace pn {
         thread_local int last_gai_error;    // NOLINT
         thread_local int last_socket_error; // NOLINT
 
-        inline void set_last_error(int error) { last_error = error; }
+        inline void set_last_error(int error) {
+            last_error = error;
+        }
 
-        inline void set_last_gai_error(int error) { last_gai_error = error; }
+        inline void set_last_gai_error(int error) {
+            last_gai_error = error;
+        }
 
-        inline void set_last_socket_error(int error) { last_socket_error = error; }
+        inline void set_last_socket_error(int error) {
+            last_socket_error = error;
+        }
 
         // Returns last WSA error on Windows
-        inline int get_last_system_error() {
+        inline int get_last_system_error(void) {
 #ifdef _WIN32
             return WSAGetLastError();
 #else
@@ -95,8 +101,7 @@ namespace pn {
     WSADATA wsa_data; // NOLINT
 #endif
 
-    // This function is special. It DIRECTLY RETURNS the value of WSAStartup, which is either 0 (OK)
-    // or an error
+    // This function is special. It DIRECTLY RETURNS the value of WSAStartup, which is either 0 (OK) or an error
     template <typename T = std::ostream>
     inline int init(bool banner = false, T& out = std::cerr) {
         if (banner) {
@@ -113,7 +118,7 @@ namespace pn {
     }
 
     // This function does not share the special properties of pn::init
-    inline int quit() {
+    inline int quit(void) {
 #ifdef _WIN32
         int result;
         if ((result = WSACleanup()) == PN_ERROR) {
@@ -137,7 +142,9 @@ namespace pn {
         return error_strings[error];
     }
 
-    inline int get_last_error() { return detail::last_error; }
+    inline int get_last_error(void) {
+        return detail::last_error;
+    }
 
     const char* socket_strerror(int error) { // NOLINT
 #ifdef _WIN32
@@ -169,7 +176,9 @@ namespace pn {
 #endif
     }
 
-    inline int get_last_socket_error() { return detail::last_socket_error; }
+    inline int get_last_socket_error(void) {
+        return detail::last_socket_error;
+    }
 
     inline const char* gai_strerror(int error) {
 #ifdef _WIN32
@@ -179,10 +188,11 @@ namespace pn {
 #endif
     }
 
-    inline int get_last_gai_error() { return detail::last_gai_error; }
+    inline int get_last_gai_error(void) {
+        return detail::last_gai_error;
+    }
 
-    inline int getaddrinfo(
-        const std::string& host, const std::string& port, const struct addrinfo* hints, struct addrinfo** ret) {
+    inline int getaddrinfo(const std::string& host, const std::string& port, const struct addrinfo* hints, struct addrinfo** ret) {
         int result;
         if ((result = ::getaddrinfo(host.c_str(), port.c_str(), hints, ret)) != PN_OK) {
             detail::set_last_error(PN_EAI);
@@ -192,13 +202,14 @@ namespace pn {
         return result;
     }
 
-    inline int getaddrinfo(
-        const std::string& host, unsigned short port, const struct addrinfo* hints, struct addrinfo** ret) {
+    inline int getaddrinfo(const std::string& host, unsigned short port, const struct addrinfo* hints, struct addrinfo** ret) {
         std::string str_port = std::to_string(port);
         return getaddrinfo(host, str_port, hints, ret);
     }
 
-    inline void freeaddrinfo(struct addrinfo* ai) { ::freeaddrinfo(ai); }
+    inline void freeaddrinfo(struct addrinfo* ai) {
+        ::freeaddrinfo(ai);
+    }
 
     class Socket {
     public:
@@ -208,7 +219,7 @@ namespace pn {
                               // or the server to which the client is
                               // connected to for clients
 
-        Socket() = default;
+        Socket(void) = default;
         Socket(sockfd_t fd) :
             fd(fd) { }
         Socket(struct sockaddr addr, socklen_t addrlen) :
@@ -246,7 +257,7 @@ namespace pn {
             return result;
         }
 
-        inline int close() {
+        inline int close(void) {
             int result;
             if ((result = detail::closesocket(this->fd)) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
@@ -259,7 +270,7 @@ namespace pn {
     template <class Base, int Socktype, int Protocol>
     class Server: public Base {
     public:
-        Server() = default;
+        Server(void) = default;
         Server(sockfd_t fd) :
             Base(fd) { }
         Server(struct sockaddr addr, socklen_t addrlen) :
@@ -275,15 +286,16 @@ namespace pn {
             hints.ai_protocol = Protocol;
             hints.ai_flags = AI_PASSIVE;
 
-            if (getaddrinfo(host, port, &hints, &ai_list) == PN_ERROR) { return PN_ERROR; }
+            if (getaddrinfo(host, port, &hints, &ai_list) == PN_ERROR) {
+                return PN_ERROR;
+            }
 
             struct addrinfo* ai_it;
             for (ai_it = ai_list; ai_it != NULL; ai_it = ai_it->ai_next) {
 #ifndef _WIN32
                 if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_ERROR) {
 #else
-                if ((this->fd = socket(addrinfo_i->ai_family, addrinfo_i->ai_socktype, addrinfo_i->ai_protocol)) ==
-                    INVALID_SOCKET) {
+                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == INVALID_SOCKET) {
 #endif
                     continue;
                 }
@@ -296,7 +308,9 @@ namespace pn {
                     }
                 }
 
-                if (::bind(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) { break; }
+                if (::bind(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) {
+                    break;
+                }
 
                 if (detail::closesocket(this->fd) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -322,12 +336,39 @@ namespace pn {
             std::string str_port = std::to_string(port);
             return bind(host, str_port);
         }
+
+        int bind(struct sockaddr* addr, socklen_t addrlen) {
+#ifndef _WIN32
+            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_ERROR) {
+#else
+            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == INVALID_SOCKET) {
+#endif
+                detail::set_last_socket_error(detail::get_last_system_error());
+                detail::set_last_error(PN_ESOCKET);
+                return PN_ERROR;
+            }
+
+            {
+                int value = 1;
+                if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, (char*) &value, sizeof(value)) == PN_ERROR) {
+                    return PN_ERROR;
+                }
+            }
+
+            if (::bind(this->fd, addr, addrlen) == PN_ERROR) {
+                detail::set_last_socket_error(detail::get_last_system_error());
+                detail::set_last_error(PN_ESOCKET);
+                return PN_ERROR;
+            }
+
+            return PN_OK;
+        }
     };
 
     template <class Base, int Socktype, int Protocol>
     class Client: public Base {
     public:
-        Client() = default;
+        Client(void) = default;
         Client(sockfd_t fd) :
             Base(fd) { }
         Client(struct sockaddr addr, socklen_t addrlen) :
@@ -343,20 +384,23 @@ namespace pn {
             hints.ai_protocol = Protocol;
             hints.ai_flags = AI_PASSIVE;
 
-            if (getaddrinfo(host, port, &hints, &ai_list) == PN_ERROR) { return PN_ERROR; }
+            if (getaddrinfo(host, port, &hints, &ai_list) == PN_ERROR) {
+                return PN_ERROR;
+            }
 
             struct addrinfo* ai_it;
             for (ai_it = ai_list; ai_it != NULL; ai_it = ai_it->ai_next) {
 #ifndef _WIN32
                 if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_ERROR) {
 #else
-                if ((this->fd = socket(addrinfo_i->ai_family, addrinfo_i->ai_socktype, addrinfo_i->ai_protocol)) ==
-                    INVALID_SOCKET) {
+                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == INVALID_SOCKET) {
 #endif
                     continue;
                 }
 
-                if (::connect(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) { break; }
+                if (::connect(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) {
+                    break;
+                }
 
                 if (detail::closesocket(this->fd) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -382,12 +426,32 @@ namespace pn {
             std::string str_port = std::to_string(port);
             return connect(host, str_port);
         }
+
+        int connect(struct sockaddr* addr, socklen_t addrlen) {
+#ifndef _WIN32
+            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_ERROR) {
+#else
+            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == INVALID_SOCKET) {
+#endif
+                detail::set_last_socket_error(detail::get_last_system_error());
+                detail::set_last_error(PN_ESOCKET);
+                return PN_ERROR;
+            }
+
+            if (::connect(this->fd, addr, addrlen) == PN_ERROR) {
+                detail::set_last_socket_error(detail::get_last_system_error());
+                detail::set_last_error(PN_ESOCKET);
+                return PN_ERROR;
+            }
+
+            return PN_OK;
+        }
     };
 
     namespace tcp {
         class Connection: public Socket {
         public:
-            Connection() = default;
+            Connection(void) = default;
             Connection(sockfd_t fd) :
                 Socket(fd) { }
             Connection(struct sockaddr addr, socklen_t addrlen) :
@@ -419,7 +483,7 @@ namespace pn {
             int backlog = -1;
 
         public:
-            Server() = default;
+            Server(void) = default;
             Server(sockfd_t fd) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd) { }
             Server(struct sockaddr addr, socklen_t addrlen) :
@@ -427,9 +491,7 @@ namespace pn {
             Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) { }
 
-            int listen(const std::function<bool(Connection, void*)>& cb,
-                int backlog,
-                void* data = NULL) { // This function BLOCKS
+            int listen(const std::function<bool(Connection, void*)>& cb, int backlog, void* data = NULL) { // This function BLOCKS
                 if (this->backlog == -1 || this->backlog != backlog) {
                     if (::listen(this->fd, backlog) == PN_ERROR) {
                         detail::set_last_socket_error(detail::get_last_system_error());
@@ -453,9 +515,7 @@ namespace pn {
                         return PN_ERROR;
                     }
 
-                    if (!cb(Connection(cfd, peer_addr, peer_addr_size),
-                            data)) { // Connections CANNOT be accepted while the callback is
-                                     // blocking
+                    if (!cb(Connection(cfd, peer_addr, peer_addr_size), data)) { // Connections CANNOT be accepted while the callback is blocking
                         break;
                     }
                 }
@@ -470,7 +530,7 @@ namespace pn {
     namespace udp {
         class Socket: public pn::Socket {
         public:
-            Socket() = default;
+            Socket(void) = default;
             Socket(sockfd_t fd) :
                 pn::Socket(fd) { }
             Socket(struct sockaddr addr, socklen_t addrlen) :
@@ -478,8 +538,7 @@ namespace pn {
             Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Socket(fd, addr, addrlen) { }
 
-            inline ssize_t sendto(
-                const char* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
+            inline ssize_t sendto(const char* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 ssize_t result;
                 if ((result = ::sendto(this->fd, buf, len, flags, dest_addr, addrlen)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -488,8 +547,7 @@ namespace pn {
                 return result;
             }
 
-            inline ssize_t recvfrom(
-                char* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
+            inline ssize_t recvfrom(char* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
                 ssize_t result;
                 if ((result = ::recvfrom(this->fd, buf, len, flags, src_addr, addrlen)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
