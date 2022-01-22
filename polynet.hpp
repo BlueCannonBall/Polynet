@@ -216,11 +216,11 @@ namespace pn {
 
     class Socket {
     public:
-        sockfd_t fd;
-        struct sockaddr addr; // Corresponds to the address to which
-        socklen_t addrlen;    // the server is bound to for servers,
-                              // or the server to which the client is
-                              // connected to for clients
+        sockfd_t fd = PN_INVALID_SOCKET;
+        struct sockaddr addr = {0};       // Corresponds to the address to which
+        socklen_t addrlen = sizeof(addr); // the server is bound to for servers,
+                                          // or the server to which the client is
+                                          // connected to for clients
 
         Socket(void) = default;
         Socket(sockfd_t fd) :
@@ -232,6 +232,12 @@ namespace pn {
             fd(fd),
             addr(addr),
             addrlen(addrlen) { }
+
+        ~Socket() {
+            if (this->fd != PN_INVALID_SOCKET) {
+                this->close();
+            }
+        }
 
         inline int setsockopt(int level, int optname, const char* optval, socklen_t optlen) {
             int result;
@@ -260,12 +266,14 @@ namespace pn {
             return result;
         }
 
+        // The file descriptor is LOST if this function executes successfully
         inline int close(void) {
             int result;
             if ((result = detail::closesocket(this->fd)) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
             }
+            this->fd = PN_INVALID_SOCKET;
             return result;
         }
     };
@@ -311,9 +319,7 @@ namespace pn {
                     break;
                 }
 
-                if (detail::closesocket(this->fd) == PN_ERROR) {
-                    detail::set_last_socket_error(detail::get_last_system_error());
-                    detail::set_last_error(PN_ESOCKET);
+                if (Base::close() == PN_ERROR) {
                     pn::freeaddrinfo(ai_list);
                     return PN_ERROR;
                 }
@@ -395,9 +401,7 @@ namespace pn {
                     break;
                 }
 
-                if (detail::closesocket(this->fd) == PN_ERROR) {
-                    detail::set_last_socket_error(detail::get_last_system_error());
-                    detail::set_last_error(PN_ESOCKET);
+                if (Base::close() == PN_ERROR) {
                     pn::freeaddrinfo(ai_list);
                     return PN_ERROR;
                 }
