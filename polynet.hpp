@@ -31,7 +31,7 @@
 // Bridged constants
 #ifdef _WIN32
     #define PN_ERROR          SOCKET_ERROR
-    #define PN_INVALID_SOCKET INVALID_SOCKET
+    #define PN_INVALID_SOCKFD INVALID_SOCKET
 
     #ifndef ssize_t
         #define ssize_t SSIZE_T
@@ -42,7 +42,7 @@
     #define PN_SD_BOTH    SD_BOTH
 #else
     #define PN_ERROR          -1
-    #define PN_INVALID_SOCKET PN_ERROR
+    #define PN_INVALID_SOCKFD PN_ERROR
 
     #define PN_SD_RECEIVE SHUT_RD
     #define PN_SD_SEND    SHUT_WR
@@ -123,12 +123,11 @@ namespace pn {
     // This function does not share the special properties of pn::init
     inline int quit(void) {
 #ifdef _WIN32
-        int result;
-        if ((result = WSACleanup()) == PN_ERROR) {
+        if (WSACleanup() == PN_ERROR) {
             detail::set_last_socket_error(detail::get_last_system_error());
             detail::set_last_error(PN_ESOCKET);
         }
-        return result;
+        return PN_OK;
 #else
         return PN_OK;
 #endif
@@ -216,7 +215,7 @@ namespace pn {
 
     class Socket {
     public:
-        sockfd_t fd = PN_INVALID_SOCKET;
+        sockfd_t fd = PN_INVALID_SOCKFD;
         struct sockaddr addr = {0};       // Corresponds to the address to which
         socklen_t addrlen = sizeof(addr); // the server is bound to for servers,
                                           // or the server to which the client is
@@ -234,47 +233,48 @@ namespace pn {
             addrlen(addrlen) { }
 
         ~Socket() {
-            if (this->fd != PN_INVALID_SOCKET) {
-                this->close();
-            }
+            this->close();
         }
 
         inline int setsockopt(int level, int optname, const char* optval, socklen_t optlen) {
-            int result;
-            if ((result = ::setsockopt(this->fd, level, optname, optval, optlen)) == PN_ERROR) {
+            if (::setsockopt(this->fd, level, optname, optval, optlen) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
             }
-            return result;
+            return PN_OK;
         }
 
         inline int getsockopt(int level, int optname, char* optval, socklen_t* optlen) {
-            int result;
-            if ((result = ::getsockopt(this->fd, level, optname, optval, optlen)) == PN_ERROR) {
+            if (::getsockopt(this->fd, level, optname, optval, optlen) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
             }
-            return result;
+            return PN_OK;
         }
 
         inline int shutdown(int how) {
-            int result;
-            if ((result = ::shutdown(this->fd, how)) == PN_ERROR) {
+            if (::shutdown(this->fd, how) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
             }
-            return result;
+            return PN_OK;
         }
 
-        // The file descriptor is LOST if this function executes successfully
-        inline int close(void) {
-            int result;
-            if ((result = detail::closesocket(this->fd)) == PN_ERROR) {
+        // By default, the closed socket file descriptor is LOST if this function executes successfully
+        inline int close(bool validity_check = true, bool reset_fd = true) {
+            if (validity_check) {
+                if (this->fd == PN_INVALID_SOCKFD) {
+                    return PN_OK;
+                }
+            }
+
+            if (detail::closesocket(this->fd) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
             }
-            this->fd = PN_INVALID_SOCKET;
-            return result;
+            if (reset_fd) this->fd = PN_INVALID_SOCKFD;
+
+            return PN_OK;
         }
     };
 
@@ -295,7 +295,6 @@ namespace pn {
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
             hints.ai_protocol = Protocol;
-            hints.ai_flags = AI_PASSIVE;
 
             if (getaddrinfo(host, port, &hints, &ai_list) == PN_ERROR) {
                 return PN_ERROR;
@@ -303,7 +302,7 @@ namespace pn {
 
             struct addrinfo* ai_it;
             for (ai_it = ai_list; ai_it != NULL; ai_it = ai_it->ai_next) {
-                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_INVALID_SOCKET) {
+                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_INVALID_SOCKFD) {
                     continue;
                 }
 
@@ -343,7 +342,7 @@ namespace pn {
         }
 
         int bind(struct sockaddr* addr, socklen_t addrlen) {
-            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_INVALID_SOCKET) {
+            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_INVALID_SOCKFD) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
@@ -361,9 +360,9 @@ namespace pn {
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
             }
-
             this->addr = *addr;
             this->addrlen = addrlen;
+
             return PN_OK;
         }
     };
@@ -385,7 +384,6 @@ namespace pn {
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
             hints.ai_protocol = Protocol;
-            hints.ai_flags = AI_PASSIVE;
 
             if (getaddrinfo(host, port, &hints, &ai_list) == PN_ERROR) {
                 return PN_ERROR;
@@ -393,7 +391,7 @@ namespace pn {
 
             struct addrinfo* ai_it;
             for (ai_it = ai_list; ai_it != NULL; ai_it = ai_it->ai_next) {
-                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_INVALID_SOCKET) {
+                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_INVALID_SOCKFD) {
                     continue;
                 }
 
@@ -425,7 +423,7 @@ namespace pn {
         }
 
         int connect(struct sockaddr* addr, socklen_t addrlen) {
-            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_INVALID_SOCKET) {
+            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_INVALID_SOCKFD) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
@@ -436,9 +434,9 @@ namespace pn {
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
             }
-
             this->addr = *addr;
             this->addrlen = addrlen;
+
             return PN_OK;
         }
     };
@@ -500,7 +498,7 @@ namespace pn {
                     struct sockaddr peer_addr;
                     socklen_t peer_addr_size = sizeof(peer_addr);
                     sockfd_t cfd;
-                    if ((cfd = accept(this->fd, &peer_addr, &peer_addr_size)) == PN_INVALID_SOCKET) {
+                    if ((cfd = accept(this->fd, &peer_addr, &peer_addr_size)) == PN_INVALID_SOCKFD) {
                         detail::set_last_socket_error(detail::get_last_system_error());
                         detail::set_last_error(PN_ESOCKET);
                         return PN_ERROR;
