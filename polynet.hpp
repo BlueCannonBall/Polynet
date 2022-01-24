@@ -484,7 +484,7 @@ namespace pn {
             Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) { }
 
-            int listen(const std::function<bool(Connection, void*)>& cb, int backlog, void* data = NULL) { // This function BLOCKS
+            int listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data = NULL) { // This function BLOCKS
                 if (this->backlog == -1 || this->backlog != backlog) {
                     if (::listen(this->fd, backlog) == PN_ERROR) {
                         detail::set_last_socket_error(detail::get_last_system_error());
@@ -495,16 +495,14 @@ namespace pn {
                 }
 
                 for (;;) {
-                    struct sockaddr peer_addr;
-                    socklen_t peer_addr_size = sizeof(peer_addr);
-                    sockfd_t cfd;
-                    if ((cfd = accept(this->fd, &peer_addr, &peer_addr_size)) == PN_INVALID_SOCKFD) {
+                    Connection conn;
+                    if ((conn.fd = accept(this->fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
                         detail::set_last_socket_error(detail::get_last_system_error());
                         detail::set_last_error(PN_ESOCKET);
                         return PN_ERROR;
                     }
 
-                    if (!cb(Connection(cfd, peer_addr, peer_addr_size), data)) { // Connections CANNOT be accepted while the callback is blocking
+                    if (!cb(conn, data)) { // Connections CANNOT be accepted while the callback is blocking
                         break;
                     }
                 }
