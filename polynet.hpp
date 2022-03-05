@@ -27,6 +27,7 @@
 #include <iostream>
 #include <ostream>
 #include <string>
+#include <utility>
 
 // Bridged constants
 #ifdef _WIN32
@@ -249,6 +250,7 @@ namespace pn {
                                           // connected to for clients
 
         Socket(void) = default;
+        Socket(Socket&) = default;
         Socket(sockfd_t fd) :
             fd(fd) { }
         Socket(struct sockaddr addr, socklen_t addrlen) :
@@ -258,6 +260,30 @@ namespace pn {
             fd(fd),
             addr(addr),
             addrlen(addrlen) { }
+        Socket(Socket&& s) {
+            this->fd = s.fd;
+            this->addr = s.addr;
+            this->addrlen = s.addrlen;
+
+            s.fd = PN_INVALID_SOCKFD;
+            s.addr = {0};
+            s.addrlen = sizeof(s.addr);
+        }
+        Socket& operator=(Socket&& s) {
+            if (this != &s) {
+                this->close(true, false);
+
+                this->fd = s.fd;
+                this->addr = s.addr;
+                this->addrlen = s.addrlen;
+
+                s.fd = PN_INVALID_SOCKFD;
+                s.addr = {0};
+                s.addrlen = sizeof(s.addr);
+            }
+
+            return *this;
+        }
 
         ~Socket() {
             this->close();
@@ -303,18 +329,27 @@ namespace pn {
 
             return PN_OK;
         }
+
+        sockfd_t release() {
+            sockfd_t old_fd = this->fd;
+            this->fd = PN_INVALID_SOCKFD;
+            return old_fd;
+        }
     };
 
     template <class Base, int Socktype, int Protocol>
     class Server: public Base {
     public:
         Server(void) = default;
+        Server(Server&) = default;
         Server(sockfd_t fd) :
             Base(fd) { }
         Server(struct sockaddr addr, socklen_t addrlen) :
             Base(addr, addrlen) { }
         Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
             Base(fd, addr, addrlen) { }
+        Server(Server&& s) :
+            Base(std::move(s)) { }
 
         int bind(const std::string& host, const std::string& port) {
             struct addrinfo* ai_list;
@@ -398,12 +433,15 @@ namespace pn {
     class Client: public Base {
     public:
         Client(void) = default;
+        Client(Client&) = default;
         Client(sockfd_t fd) :
             Base(fd) { }
         Client(struct sockaddr addr, socklen_t addrlen) :
             Base(addr, addrlen) { }
         Client(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
             Base(fd, addr, addrlen) { }
+        Client(Client&& s) :
+            Base(std::move(s)) { }
 
         int connect(const std::string& host, const std::string& port) {
             struct addrinfo* ai_list;
@@ -472,12 +510,15 @@ namespace pn {
         class Connection: public Socket {
         public:
             Connection(void) = default;
+            Connection(Connection&) = default;
             Connection(sockfd_t fd) :
                 Socket(fd) { }
             Connection(struct sockaddr addr, socklen_t addrlen) :
                 Socket(addr, addrlen) { }
             Connection(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 Socket(fd, addr, addrlen) { }
+            Connection(Connection&& s) :
+                Socket(std::move(s)) { }
 
             inline ssize_t send(const char* buf, size_t len, int flags = 0) {
                 ssize_t result;
@@ -504,12 +545,35 @@ namespace pn {
 
         public:
             Server(void) = default;
+            Server(Server&) = default;
             Server(sockfd_t fd) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd) { }
             Server(struct sockaddr addr, socklen_t addrlen) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) { }
             Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) { }
+            Server(Server&& s) :
+                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(std::move(s)) {
+                this->backlog = s.backlog;
+                s.backlog = -1;
+            }
+            Server& operator=(Server&& s) {
+                if (this != &s) {
+                    this->close(true, false);
+
+                    this->fd = s.fd;
+                    this->addr = s.addr;
+                    this->addrlen = s.addrlen;
+                    this->backlog = s.backlog;
+
+                    s.fd = PN_INVALID_SOCKFD;
+                    s.addr = {0};
+                    s.addrlen = sizeof(s.addr);
+                    s.backlog = -1;
+                }
+
+                return *this;
+            }
 
             int listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data = NULL) { // This function BLOCKS
                 if (this->backlog == -1 || this->backlog != backlog) {
@@ -545,12 +609,15 @@ namespace pn {
         class Socket: public pn::Socket {
         public:
             Socket(void) = default;
+            Socket(Socket&) = default;
             Socket(sockfd_t fd) :
                 pn::Socket(fd) { }
             Socket(struct sockaddr addr, socklen_t addrlen) :
                 pn::Socket(addr, addrlen) { }
             Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Socket(fd, addr, addrlen) { }
+            Socket(Socket&& s) :
+                pn::Socket(std::move(s)) { }
 
             inline ssize_t sendto(const char* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 ssize_t result;
