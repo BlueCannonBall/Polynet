@@ -141,7 +141,11 @@ namespace pn {
             "All addresses returned by getaddrinfo are bad", // PN_EBADADDRS
         };
 
-        return error_strings[error];
+        if (error >= 0 && error < sizeof(error_strings)) {
+            return error_strings[error];
+        } else {
+            return "Unknown error";
+        }
     }
 
     inline int get_last_error(void) {
@@ -192,6 +196,29 @@ namespace pn {
 
     inline int get_last_gai_error(void) {
         return detail::last_gai_error;
+    }
+
+    std::string universal_strerror(int error = get_last_error()) { // NOLINT
+        std::string base_error = strerror(error);
+        std::string specific_error;
+
+        switch (error) {
+            case PN_ESOCKET: {
+                specific_error = socket_strerror(get_last_socket_error());
+                break;
+            }
+
+            case PN_EAI: {
+                specific_error = gai_strerror(get_last_gai_error());
+                break;
+            }
+
+            default: {
+                return base_error;
+            }
+        }
+
+        return base_error + ": " + specific_error;
     }
 
     inline int getaddrinfo(const std::string& host, const std::string& port, const struct addrinfo* hints, struct addrinfo** ret) {
@@ -484,7 +511,7 @@ namespace pn {
             Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) { }
 
-            int listen(const std::function<bool(Connection, void*)>& cb, int backlog, void* data = NULL) { // This function BLOCKS
+            int listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data = NULL) { // This function BLOCKS
                 if (this->backlog == -1 || this->backlog != backlog) {
                     if (::listen(this->fd, backlog) == PN_ERROR) {
                         detail::set_last_socket_error(detail::get_last_system_error());
@@ -495,16 +522,14 @@ namespace pn {
                 }
 
                 for (;;) {
-                    struct sockaddr peer_addr;
-                    socklen_t peer_addr_size = sizeof(peer_addr);
-                    sockfd_t cfd;
-                    if ((cfd = accept(this->fd, &peer_addr, &peer_addr_size)) == PN_INVALID_SOCKFD) {
+                    Connection conn;
+                    if ((conn.fd = accept(this->fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
                         detail::set_last_socket_error(detail::get_last_system_error());
                         detail::set_last_error(PN_ESOCKET);
                         return PN_ERROR;
                     }
 
-                    if (!cb(Connection(cfd, peer_addr, peer_addr_size), data)) { // Connections CANNOT be accepted while the callback is blocking
+                    if (!cb(conn, data)) { // Connections CANNOT be accepted while the callback is blocking
                         break;
                     }
                 }
