@@ -316,7 +316,7 @@ namespace pn {
         // By default, the closed socket file descriptor is LOST if this function executes successfully
         inline int close(bool validity_check = true, bool reset_fd = true) {
             if (validity_check) {
-                if (this->fd == PN_INVALID_SOCKFD) {
+                if (!this->is_valid()) {
                     return PN_OK;
                 }
             }
@@ -334,6 +334,10 @@ namespace pn {
             sockfd_t old_fd = this->fd;
             this->fd = PN_INVALID_SOCKFD;
             return old_fd;
+        }
+
+        bool is_valid() const {
+            return this->fd != PN_INVALID_SOCKFD;
         }
     };
 
