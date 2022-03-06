@@ -330,13 +330,13 @@ namespace pn {
             return PN_OK;
         }
 
-        sockfd_t release() {
+        inline sockfd_t release() {
             sockfd_t old_fd = this->fd;
             this->fd = PN_INVALID_SOCKFD;
             return old_fd;
         }
 
-        bool is_valid() const {
+        inline bool is_valid() const {
             return this->fd != PN_INVALID_SOCKFD;
         }
     };
