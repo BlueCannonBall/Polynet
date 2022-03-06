@@ -166,7 +166,7 @@ namespace pn {
             sizeof(error_string),
             NULL);
 
-        for (unsigned int i = 0; i < sizeof(error_string); i++) {
+        for (size_t i = 0; i < sizeof(error_string); i++) {
             if (error_string[i] == '\n') {
                 if (error_string[i + 1] == '\0') {
                     error_string[i] = '\0';
@@ -285,7 +285,7 @@ namespace pn {
             return *this;
         }
 
-        ~Socket() {
+        ~Socket(void) {
             this->close();
         }
 
@@ -330,13 +330,13 @@ namespace pn {
             return PN_OK;
         }
 
-        inline sockfd_t release() {
+        inline sockfd_t release(void) {
             sockfd_t old_fd = this->fd;
             this->fd = PN_INVALID_SOCKFD;
             return old_fd;
         }
 
-        inline bool is_valid() const {
+        inline bool is_valid(void) const {
             return this->fd != PN_INVALID_SOCKFD;
         }
     };
