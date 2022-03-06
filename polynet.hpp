@@ -136,7 +136,7 @@ namespace pn {
 
     const char* strerror(int error) { // NOLINT
         static const char* error_strings[] = {
-            "Success"                                        // PN_ESUCCESS
+            "Success",                                       // PN_ESUCCESS
             "Socket error",                                  // PN_ESOCKET
             "getaddrinfo failed",                            // PN_EAI
             "All addresses returned by getaddrinfo are bad", // PN_EBADADDRS
