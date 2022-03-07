@@ -149,7 +149,7 @@ namespace pn {
             "All addresses returned by getaddrinfo are bad", // PN_EBADADDRS
         };
 
-        if (error >= 0 && error < sizeof(error_strings)) {
+        if (error >= 0 && error < 4) {
             return error_strings[error];
         } else {
             return "Unknown error";
