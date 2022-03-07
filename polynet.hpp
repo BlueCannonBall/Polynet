@@ -3,6 +3,8 @@
 
 // Network includes
 #ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+
     #ifndef _WIN32_WINNT
         #define _WIN32_WINNT 0x0502 // Windows Server 2003
     #endif
@@ -14,6 +16,10 @@
 #else
     #include <arpa/inet.h>
     #include <netdb.h>
+    #include <netinet/in.h>
+    #include <netinet/ip.h>
+    #include <netinet/tcp.h>
+    #include <netinet/udp.h>
     #include <sys/socket.h>
     #include <sys/types.h>
     #include <unistd.h>
