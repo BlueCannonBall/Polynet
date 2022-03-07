@@ -380,8 +380,8 @@ namespace pn {
                 }
 
                 {
-                    int value = 1;
-                    if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, (char*) &value, sizeof(value)) == PN_ERROR) {
+                    const int value = 1;
+                    if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, (const char*) &value, sizeof(int)) == PN_ERROR) {
                         pn::freeaddrinfo(ai_list);
                         return PN_ERROR;
                     }
