@@ -257,7 +257,7 @@ namespace pn {
                                           // connected to for clients
 
         Socket(void) = default;
-        Socket(Socket&) = default;
+        Socket(const Socket&) = default;
         Socket(Socket&& s) {
             this->fd = s.fd;
             this->addr = s.addr;
@@ -277,8 +277,8 @@ namespace pn {
             addr(addr),
             addrlen(addrlen) { }
 
-        Socket& operator=(Socket& s) = default;
-        Socket& operator=(Socket&& s) = default;
+        Socket& operator=(const Socket&) = default;
+        Socket& operator=(Socket&&) = default;
 
         ~Socket(void) {
             this->close();
@@ -340,7 +340,7 @@ namespace pn {
     class Server: public Base {
     public:
         Server(void) = default;
-        Server(Server&) = default;
+        Server(const Server&) = default;
         Server(Server&& s) :
             Base(std::move(s)) { }
         Server(sockfd_t fd) :
@@ -350,8 +350,8 @@ namespace pn {
         Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
             Base(fd, addr, addrlen) { }
 
-        Server& operator=(Server& s) = default;
-        Server& operator=(Server&& s) = default;
+        Server& operator=(const Server&) = default;
+        Server& operator=(Server&&) = default;
 
         int bind(const std::string& host, const std::string& port) {
             struct addrinfo* ai_list;
@@ -435,7 +435,7 @@ namespace pn {
     class Client: public Base {
     public:
         Client(void) = default;
-        Client(Client&) = default;
+        Client(const Client&) = default;
         Client(Client&& s) :
             Base(std::move(s)) { }
         Client(sockfd_t fd) :
@@ -445,8 +445,8 @@ namespace pn {
         Client(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
             Base(fd, addr, addrlen) { }
 
-        Client& operator=(Client& s) = default;
-        Client& operator=(Client&& s) = default;
+        Client& operator=(const Client&) = default;
+        Client& operator=(Client&&) = default;
 
         int connect(const std::string& host, const std::string& port) {
             struct addrinfo* ai_list;
@@ -515,7 +515,7 @@ namespace pn {
         class Connection: public Socket {
         public:
             Connection(void) = default;
-            Connection(Connection&) = default;
+            Connection(const Connection&) = default;
             Connection(Connection&& s) :
                 Socket(std::move(s)) { }
             Connection(sockfd_t fd) :
@@ -525,8 +525,8 @@ namespace pn {
             Connection(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 Socket(fd, addr, addrlen) { }
 
-            Connection& operator=(Connection& s) = default;
-            Connection& operator=(Connection&& s) = default;
+            Connection& operator=(const Connection&) = default;
+            Connection& operator=(Connection&&) = default;
 
             inline ssize_t send(const char* buf, size_t len, int flags = 0) {
                 ssize_t result;
@@ -553,7 +553,7 @@ namespace pn {
 
         public:
             Server(void) = default;
-            Server(Server&) = default;
+            Server(const Server&) = default;
             Server(Server&& s) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(std::move(s)) {
                 this->backlog = s.backlog;
@@ -566,9 +566,10 @@ namespace pn {
             Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) { }
 
-            Server& operator=(Server& s) = default;
-            Server& operator=(Server&& s) = default;
+            Server& operator=(const Server&) = default;
+            Server& operator=(Server&&) = default;
 
+            // Return false from the callback to stop listening
             int listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data = NULL) { // This function BLOCKS
                 if (this->backlog == -1 || this->backlog != backlog) {
                     if (::listen(this->fd, backlog) == PN_ERROR) {
@@ -603,7 +604,7 @@ namespace pn {
         class Socket: public pn::Socket {
         public:
             Socket(void) = default;
-            Socket(Socket&) = default;
+            Socket(const Socket&) = default;
             Socket(Socket&& s) :
                 pn::Socket(std::move(s)) { }
             Socket(sockfd_t fd) :
@@ -613,8 +614,8 @@ namespace pn {
             Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Socket(fd, addr, addrlen) { }
 
-            Socket& operator=(Socket& s) = default;
-            Socket& operator=(Socket&& s) = default;
+            Socket& operator=(const Socket&) = default;
+            Socket& operator=(Socket&&) = default;
 
             inline ssize_t sendto(const char* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 ssize_t result;
