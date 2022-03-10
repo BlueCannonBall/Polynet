@@ -598,7 +598,7 @@ namespace pn {
 
             // Return false from the callback to stop listening
             int listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data = NULL) { // This function BLOCKS
-                if (this->backlog == -1 || this->backlog != backlog) {
+                if (this->backlog != backlog || this->backlog == -1) {
                     if (::listen(this->fd, backlog) == PN_ERROR) {
                         detail::set_last_socket_error(detail::get_last_system_error());
                         detail::set_last_error(PN_ESOCKET);
