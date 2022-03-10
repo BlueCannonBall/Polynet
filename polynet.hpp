@@ -259,13 +259,7 @@ namespace pn {
         Socket(void) = default;
         Socket(const Socket&) = default;
         Socket(Socket&& s) {
-            this->fd = s.fd;
-            this->addr = s.addr;
-            this->addrlen = s.addrlen;
-
-            s.fd = PN_INVALID_SOCKFD;
-            s.addr = {0};
-            s.addrlen = sizeof(s.addr);
+            *this = std::move(s);
         }
         Socket(sockfd_t fd) :
             fd(fd) { }
@@ -278,10 +272,24 @@ namespace pn {
             addrlen(addrlen) { }
 
         Socket& operator=(const Socket&) = default;
-        Socket& operator=(Socket&&) = default;
+        inline Socket& operator=(Socket&& s) {
+            if (this != &s) {
+                this->close(true, false);
+
+                this->fd = s.fd;
+                this->addr = s.addr;
+                this->addrlen = s.addrlen;
+
+                s.fd = PN_INVALID_SOCKFD;
+                s.addr = {0};
+                s.addrlen = sizeof(s.addr);
+            }
+
+            return *this;
+        }
 
         ~Socket(void) {
-            this->close();
+            this->close(true, false);
         }
 
         inline int setsockopt(int level, int optname, const char* optval, socklen_t optlen) {
@@ -319,8 +327,9 @@ namespace pn {
             if (detail::closesocket(this->fd) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
+            } else if (reset_fd) {
+                this->fd = PN_INVALID_SOCKFD;
             }
-            if (reset_fd) this->fd = PN_INVALID_SOCKFD;
 
             return PN_OK;
         }
@@ -341,8 +350,9 @@ namespace pn {
     public:
         Server(void) = default;
         Server(const Server&) = default;
-        Server(Server&& s) :
-            Base(std::move(s)) { }
+        Server(Server&& s) {
+            *this = std::move(s);
+        }
         Server(sockfd_t fd) :
             Base(fd) { }
         Server(struct sockaddr addr, socklen_t addrlen) :
@@ -351,7 +361,10 @@ namespace pn {
             Base(fd, addr, addrlen) { }
 
         Server& operator=(const Server&) = default;
-        Server& operator=(Server&&) = default;
+        inline Server& operator=(Server&& s) {
+            Base::operator=(std::move(s));
+            return *this;
+        }
 
         int bind(const std::string& host, const std::string& port) {
             struct addrinfo* ai_list;
@@ -436,8 +449,9 @@ namespace pn {
     public:
         Client(void) = default;
         Client(const Client&) = default;
-        Client(Client&& s) :
-            Base(std::move(s)) { }
+        Client(Client&& s) {
+            *this = std::move(s);
+        }
         Client(sockfd_t fd) :
             Base(fd) { }
         Client(struct sockaddr addr, socklen_t addrlen) :
@@ -446,7 +460,10 @@ namespace pn {
             Base(fd, addr, addrlen) { }
 
         Client& operator=(const Client&) = default;
-        Client& operator=(Client&&) = default;
+        inline Client& operator=(Client&& s) {
+            Base::operator=(std::move(s));
+            return *this;
+        }
 
         int connect(const std::string& host, const std::string& port) {
             struct addrinfo* ai_list;
@@ -516,8 +533,9 @@ namespace pn {
         public:
             Connection(void) = default;
             Connection(const Connection&) = default;
-            Connection(Connection&& s) :
-                Socket(std::move(s)) { }
+            Connection(Connection&& s) {
+                *this = std::move(s);
+            }
             Connection(sockfd_t fd) :
                 Socket(fd) { }
             Connection(struct sockaddr addr, socklen_t addrlen) :
@@ -526,7 +544,10 @@ namespace pn {
                 Socket(fd, addr, addrlen) { }
 
             Connection& operator=(const Connection&) = default;
-            Connection& operator=(Connection&&) = default;
+            inline Connection& operator=(Connection&& s) {
+                Socket::operator=(std::move(s));
+                return *this;
+            }
 
             inline ssize_t send(const char* buf, size_t len, int flags = 0) {
                 ssize_t result;
@@ -554,10 +575,8 @@ namespace pn {
         public:
             Server(void) = default;
             Server(const Server&) = default;
-            Server(Server&& s) :
-                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(std::move(s)) {
-                this->backlog = s.backlog;
-                s.backlog = -1;
+            Server(Server&& s) {
+                *this = std::move(s);
             }
             Server(sockfd_t fd) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd) { }
@@ -567,7 +586,15 @@ namespace pn {
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) { }
 
             Server& operator=(const Server&) = default;
-            Server& operator=(Server&&) = default;
+            inline Server& operator=(Server&& s) {
+                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>::operator=(std::move(s));
+                if (this != &s) {
+                    this->backlog = s.backlog;
+                    s.backlog = -1;
+                }
+
+                return *this;
+            }
 
             // Return false from the callback to stop listening
             int listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data = NULL) { // This function BLOCKS
@@ -615,7 +642,10 @@ namespace pn {
                 pn::Socket(fd, addr, addrlen) { }
 
             Socket& operator=(const Socket&) = default;
-            Socket& operator=(Socket&&) = default;
+            inline Socket& operator=(Socket&& s) {
+                pn::Socket::operator=(std::move(s));
+                return *this;
+            }
 
             inline ssize_t sendto(const char* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 ssize_t result;
