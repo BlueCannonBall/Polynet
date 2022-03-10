@@ -274,7 +274,7 @@ namespace pn {
         Socket& operator=(const Socket&) = default;
         inline Socket& operator=(Socket&& s) {
             if (this != &s) {
-                this->close(true, false);
+                this->close(false);
 
                 this->fd = s.fd;
                 this->addr = s.addr;
@@ -289,7 +289,7 @@ namespace pn {
         }
 
         ~Socket(void) {
-            this->close(true, false);
+            this->close(false);
         }
 
         inline int setsockopt(int level, int optname, const char* optval, socklen_t optlen) {
@@ -317,11 +317,9 @@ namespace pn {
         }
 
         // By default, the closed socket file descriptor is LOST if this function executes successfully
-        inline int close(bool validity_check = true, bool reset_fd = true) {
-            if (validity_check) {
-                if (!this->is_valid()) {
-                    return PN_OK;
-                }
+        inline int close(bool reset_fd = true, bool validity_check = true) {
+            if (validity_check && !this->is_valid()) {
+                return PN_OK;
             }
 
             if (detail::closesocket(this->fd) == PN_ERROR) {
@@ -400,12 +398,12 @@ namespace pn {
                     return PN_ERROR;
                 }
             }
-
             if (ai_it == NULL) {
                 detail::set_last_error(PN_EBADADDRS);
                 pn::freeaddrinfo(ai_list);
                 return PN_ERROR;
             }
+
             this->addr = *ai_it->ai_addr;
             this->addrlen = ai_it->ai_addrlen;
 
@@ -437,6 +435,7 @@ namespace pn {
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
             }
+
             this->addr = *addr;
             this->addrlen = addrlen;
 
@@ -491,12 +490,12 @@ namespace pn {
                     return PN_ERROR;
                 }
             }
-
             if (ai_it == NULL) {
                 detail::set_last_error(PN_EBADADDRS);
                 pn::freeaddrinfo(ai_list);
                 return PN_ERROR;
             }
+
             this->addr = *ai_it->ai_addr;
             this->addrlen = ai_it->ai_addrlen;
 
@@ -521,6 +520,7 @@ namespace pn {
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
             }
+
             this->addr = *addr;
             this->addrlen = addrlen;
 
