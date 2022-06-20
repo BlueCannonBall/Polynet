@@ -74,9 +74,9 @@ namespace pn {
 #endif
 
     namespace detail {
-        thread_local int last_error = 0;        // NOLINT
-        thread_local int last_gai_error = 0;    // NOLINT
-        thread_local int last_socket_error = 0; // NOLINT
+        thread_local int last_error = PN_ESUCCESS;  // NOLINT
+        thread_local int last_gai_error = PN_OK;    // NOLINT
+        thread_local int last_socket_error = PN_OK; // NOLINT
 
         inline void set_last_error(int error) {
             last_error = error;
