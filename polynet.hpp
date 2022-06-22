@@ -212,12 +212,12 @@ namespace pn {
 
         switch (error) {
             case PN_ESOCKET: {
-                specific_error = socket_strerror(get_last_socket_error());
+                specific_error = socket_strerror();
                 break;
             }
 
             case PN_EAI: {
-                specific_error = gai_strerror(get_last_gai_error());
+                specific_error = gai_strerror();
                 break;
             }
 
