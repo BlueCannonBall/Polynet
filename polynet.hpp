@@ -141,7 +141,11 @@ namespace pn {
 #endif
     }
 
-    const char* strerror(int error) { // NOLINT
+    inline int get_last_error(void) {
+        return detail::last_error;
+    }
+
+    const char* strerror(int error = get_last_error()) { // NOLINT
         static const char* error_strings[] = {
             "Success",                                       // PN_ESUCCESS
             "Socket error",                                  // PN_ESOCKET
@@ -156,11 +160,11 @@ namespace pn {
         }
     }
 
-    inline int get_last_error(void) {
-        return detail::last_error;
+    inline int get_last_socket_error(void) {
+        return detail::last_socket_error;
     }
 
-    const char* socket_strerror(int error) { // NOLINT
+    const char* socket_strerror(int error = get_last_socket_error()) { // NOLINT
 #ifdef _WIN32
         static thread_local char error_string[256];
         memset(error_string, 0, sizeof(error_string));
@@ -190,20 +194,16 @@ namespace pn {
 #endif
     }
 
-    inline int get_last_socket_error(void) {
-        return detail::last_socket_error;
+    inline int get_last_gai_error(void) {
+        return detail::last_gai_error;
     }
 
-    inline const char* gai_strerror(int error) {
+    inline const char* gai_strerror(int error = get_last_gai_error()) {
 #ifdef _WIN32
         return socket_strerror(error);
 #else
         return ::gai_strerror(error);
 #endif
-    }
-
-    inline int get_last_gai_error(void) {
-        return detail::last_gai_error;
     }
 
     std::string universal_strerror(int error = get_last_error()) { // NOLINT
