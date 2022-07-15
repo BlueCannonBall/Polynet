@@ -7,6 +7,10 @@ namespace pn {
         thread_local int last_socket_error = PN_OK;
     } // namespace detail
 
+#ifdef _WIN32
+    WSADATA wsa_data;
+#endif
+
     const char* strerror(int error) {
         static const char* error_strings[] = {
             "Success",                                       // PN_ESUCCESS

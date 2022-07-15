@@ -109,7 +109,7 @@ namespace pn {
     } // namespace detail
 
 #ifdef _WIN32
-    WSADATA wsa_data;
+    extern WSADATA wsa_data;
 #endif
 
     // This function is special. It DIRECTLY RETURNS the value of WSAStartup, which is either 0 (OK) or an error
