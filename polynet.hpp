@@ -74,9 +74,9 @@ namespace pn {
 #endif
 
     namespace detail {
-        thread_local int last_error = PN_ESUCCESS;  // NOLINT
-        thread_local int last_gai_error = PN_OK;    // NOLINT
-        thread_local int last_socket_error = PN_OK; // NOLINT
+        extern thread_local int last_error;
+        extern thread_local int last_gai_error;
+        extern thread_local int last_socket_error;
 
         inline void set_last_error(int error) {
             last_error = error;
@@ -109,7 +109,7 @@ namespace pn {
     } // namespace detail
 
 #ifdef _WIN32
-    WSADATA wsa_data; // NOLINT
+    WSADATA wsa_data;
 #endif
 
     // This function is special. It DIRECTLY RETURNS the value of WSAStartup, which is either 0 (OK) or an error
@@ -145,54 +145,13 @@ namespace pn {
         return detail::last_error;
     }
 
-    const char* strerror(int error = get_last_error()) { // NOLINT
-        static const char* error_strings[] = {
-            "Success",                                       // PN_ESUCCESS
-            "Socket error",                                  // PN_ESOCKET
-            "getaddrinfo failed",                            // PN_EAI
-            "All addresses returned by getaddrinfo are bad", // PN_EBADADDRS
-        };
-
-        if (error >= 0 && error < 4) {
-            return error_strings[error];
-        } else {
-            return "Unknown error";
-        }
-    }
+    const char* strerror(int error = get_last_error());
 
     inline int get_last_socket_error(void) {
         return detail::last_socket_error;
     }
 
-    const char* socket_strerror(int error = get_last_socket_error()) { // NOLINT
-#ifdef _WIN32
-        static thread_local char error_string[256];
-        memset(error_string, 0, sizeof(error_string));
-
-        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-            NULL,
-            error,
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            error_string,
-            sizeof(error_string),
-            NULL);
-
-        for (size_t i = 0; i < sizeof(error_string); i++) {
-            if (error_string[i] == '\n') {
-                if (error_string[i + 1] == '\0') {
-                    error_string[i] = '\0';
-                    break;
-                } else {
-                    error_string[i] = ' ';
-                }
-            }
-        }
-
-        return error_string;
-#else
-        return ::strerror(error);
-#endif
-    }
+    const char* socket_strerror(int error = get_last_socket_error());
 
     inline int get_last_gai_error(void) {
         return detail::last_gai_error;
@@ -206,28 +165,7 @@ namespace pn {
 #endif
     }
 
-    std::string universal_strerror(int error = get_last_error()) { // NOLINT
-        std::string base_error = strerror(error);
-        std::string specific_error;
-
-        switch (error) {
-            case PN_ESOCKET: {
-                specific_error = socket_strerror();
-                break;
-            }
-
-            case PN_EAI: {
-                specific_error = gai_strerror();
-                break;
-            }
-
-            default: {
-                return base_error;
-            }
-        }
-
-        return base_error + ": " + specific_error;
-    }
+    std::string universal_strerror(int error = get_last_error());
 
     inline int getaddrinfo(const std::string& host, const std::string& port, const struct addrinfo* hints, struct addrinfo** ret) {
         int result;
@@ -597,31 +535,7 @@ namespace pn {
             }
 
             // Return false from the callback to stop listening
-            int listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data = NULL) { // This function BLOCKS
-                if (this->backlog != backlog || this->backlog == -1) {
-                    if (::listen(this->fd, backlog) == PN_ERROR) {
-                        detail::set_last_socket_error(detail::get_last_system_error());
-                        detail::set_last_error(PN_ESOCKET);
-                        return PN_ERROR;
-                    }
-                    this->backlog = backlog;
-                }
-
-                for (;;) {
-                    Connection conn;
-                    if ((conn.fd = accept(this->fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
-                        detail::set_last_socket_error(detail::get_last_system_error());
-                        detail::set_last_error(PN_ESOCKET);
-                        return PN_ERROR;
-                    }
-
-                    if (!cb(conn, data)) { // Connections CANNOT be accepted while the callback is blocking
-                        break;
-                    }
-                }
-
-                return PN_OK;
-            }
+            int listen(const std::function<bool(Connection&, void*)>& cb, int backlog = 128, void* data = NULL);
         };
 
         using Client = pn::Client<Connection, SOCK_STREAM, IPPROTO_TCP>;
