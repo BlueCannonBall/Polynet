@@ -99,5 +99,5 @@ namespace pn {
         }
 
         return PN_OK;
-    }    
+    }
 } // namespace pn
