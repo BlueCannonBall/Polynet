@@ -21,6 +21,7 @@
     #include <netinet/ip6.h>
     #include <netinet/tcp.h>
     #include <netinet/udp.h>
+    #include <signal.h>
     #include <sys/socket.h>
     #include <sys/types.h>
     #include <unistd.h>
@@ -70,7 +71,7 @@ namespace pn {
     typedef int socklen_t;
 #else
     typedef int sockfd_t;
-    typedef ::socklen_t socklen_t;
+    typedef unsigned int socklen_t;
 #endif
 
     namespace detail {
@@ -112,7 +113,6 @@ namespace pn {
     extern WSADATA wsa_data;
 #endif
 
-    // This function is special. It DIRECTLY RETURNS the value of WSAStartup, which is either 0 (OK) or an error
     template <typename T = std::ostream>
     inline int init(bool banner = false, T& out = std::cerr) {
         if (banner) {
@@ -122,21 +122,37 @@ namespace pn {
         }
 
 #ifdef _WIN32
-        return WSAStartup(MAKEWORD(2, 2), &wsa_data);
+        int result;
+        if ((result = WSAStartup(MAKEWORD(2, 2), &wsa_data)) != PN_OK) {
+            detail::set_last_socket_error(result);
+            detail::set_last_error(PN_ESOCKET);
+            return PN_ERROR;
+        }
+        return result;
 #else
+        if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+            detail::set_last_socket_error(detail::get_last_system_error());
+            detail::set_last_error(PN_ESOCKET);
+            return PN_ERROR;
+        }
         return PN_OK;
 #endif
     }
 
-    // This function does not share the special properties of pn::init
     inline int quit(void) {
 #ifdef _WIN32
         if (WSACleanup() == PN_ERROR) {
             detail::set_last_socket_error(detail::get_last_system_error());
             detail::set_last_error(PN_ESOCKET);
+            return PN_ERROR;
         }
         return PN_OK;
 #else
+        if (signal(SIGPIPE, SIG_DFL) == SIG_ERR) {
+            detail::set_last_socket_error(detail::get_last_system_error());
+            detail::set_last_error(PN_ESOCKET);
+            return PN_ERROR;
+        }
         return PN_OK;
 #endif
     }
@@ -145,19 +161,19 @@ namespace pn {
         return detail::last_error;
     }
 
-    const char* strerror(int error = get_last_error());
+    std::string strerror(int error = get_last_error());
 
     inline int get_last_socket_error(void) {
         return detail::last_socket_error;
     }
 
-    const char* socket_strerror(int error = get_last_socket_error());
+    std::string socket_strerror(int error = get_last_socket_error());
 
     inline int get_last_gai_error(void) {
         return detail::last_gai_error;
     }
 
-    inline const char* gai_strerror(int error = get_last_gai_error()) {
+    inline std::string gai_strerror(int error = get_last_gai_error()) {
 #ifdef _WIN32
         return socket_strerror(error);
 #else
@@ -234,6 +250,7 @@ namespace pn {
             if (::setsockopt(this->fd, level, optname, optval, optlen) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
+                return PN_ERROR;
             }
             return PN_OK;
         }
@@ -242,6 +259,7 @@ namespace pn {
             if (::getsockopt(this->fd, level, optname, optval, optlen) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
+                return PN_ERROR;
             }
             return PN_OK;
         }
@@ -250,6 +268,7 @@ namespace pn {
             if (::shutdown(this->fd, how) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
+                return PN_ERROR;
             }
             return PN_OK;
         }
@@ -263,6 +282,7 @@ namespace pn {
             if (detail::closesocket(this->fd) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
+                return PN_ERROR;
             } else if (reset_fd) {
                 this->fd = PN_INVALID_SOCKFD;
             }
@@ -331,7 +351,7 @@ namespace pn {
                     break;
                 }
 
-                if (Base::close() == PN_ERROR) {
+                if (Base::close(true, false) == PN_ERROR) {
                     pn::freeaddrinfo(ai_list);
                     return PN_ERROR;
                 }
@@ -423,7 +443,7 @@ namespace pn {
                     break;
                 }
 
-                if (Base::close() == PN_ERROR) {
+                if (Base::close(true, false) == PN_ERROR) {
                     pn::freeaddrinfo(ai_list);
                     return PN_ERROR;
                 }

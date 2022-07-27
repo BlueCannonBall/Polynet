@@ -11,8 +11,8 @@ namespace pn {
     WSADATA wsa_data;
 #endif
 
-    const char* strerror(int error) {
-        static const char* error_strings[] = {
+    std::string strerror(int error) {
+        const static std::string error_strings[] = {
             "Success",                                       // PN_ESUCCESS
             "Socket error",                                  // PN_ESOCKET
             "getaddrinfo failed",                            // PN_EAI
@@ -26,9 +26,9 @@ namespace pn {
         }
     }
 
-    const char* socket_strerror(int error) {
+    std::string socket_strerror(int error) {
 #ifdef _WIN32
-        static thread_local char error_string[256];
+        static thread_local char error_string[1024];
         memset(error_string, 0, sizeof(error_string));
 
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
