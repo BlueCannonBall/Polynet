@@ -25,6 +25,12 @@
     #include <sys/socket.h>
     #include <sys/types.h>
     #include <unistd.h>
+
+    #if __has_include(<endian.h>)
+        #include <endian.h>
+    #elif __has_include(<machine/endian.h>)
+        #include <machine/endian.h>
+    #endif
 #endif
 
 // Other includes
@@ -56,6 +62,14 @@
     #define PN_SD_RECEIVE SHUT_RD
     #define PN_SD_SEND    SHUT_WR
     #define PN_SD_BOTH    SHUT_RDWR
+
+    #if __BYTE_ORDER == __BIG_ENDIAN
+        #define htonll(num) (num)
+        #define ntohll(num) (num)
+    #else
+        #define htonll(num) ((htonl(num) << 32) | htonl(num >> 32))
+        #define ntohll(num) ((ntohl(num) << 32) | ntohl(num >> 32))
+    #endif
 #endif
 #define PN_OK 0
 
