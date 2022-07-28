@@ -36,6 +36,7 @@
 // Other includes
 #include <cerrno>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -67,8 +68,8 @@
         #define htonll(num) (num)
         #define ntohll(num) (num)
     #else
-        #define htonll(num) ((htonl(num) << 32) | htonl(num >> 32))
-        #define ntohll(num) ((ntohl(num) << 32) | ntohl(num >> 32))
+        #define htonll(num) ((((uint64_t) htonl(num)) << 32) | htonl(num >> 32))
+        #define ntohll(num) ((((uint64_t) ntohl(num)) << 32) | ntohl(num >> 32))
     #endif
 #endif
 #define PN_OK 0
