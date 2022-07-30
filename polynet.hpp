@@ -79,6 +79,7 @@
 #define PN_ESOCKET   1
 #define PN_EAI       2
 #define PN_EBADADDRS 3
+#define PN_EPTON     4
 
 namespace pn {
 #ifdef _WIN32
@@ -215,6 +216,30 @@ namespace pn {
 
     inline void freeaddrinfo(struct addrinfo* ai) {
         ::freeaddrinfo(ai);
+    }
+
+    inline int inet_ntop(int af, const void* src, std::string& ret) {
+        char result[128];
+        if (::inet_ntop(af, src, result, sizeof(ret)) == NULL) {
+            detail::set_last_socket_error(detail::get_last_system_error());
+            detail::set_last_error(PN_ESOCKET);
+            return PN_ERROR;
+        }
+        ret = result;
+        return PN_OK;
+    }
+
+    inline int inet_pton(int af, const std::string& src, void* ret) {
+        int result;
+        if ((result = ::inet_pton(af, src.c_str(), ret)) == 0) {
+            detail::set_last_error(PN_EPTON);
+            return PN_ERROR;
+        } else if (result == -1) {
+            detail::set_last_socket_error(detail::get_last_system_error());
+            detail::set_last_error(PN_ESOCKET);
+            return PN_ERROR;
+        }
+        return PN_OK;
     }
 
     class Socket {

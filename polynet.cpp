@@ -17,9 +17,10 @@ namespace pn {
             "Socket error",                                  // PN_ESOCKET
             "getaddrinfo failed",                            // PN_EAI
             "All addresses returned by getaddrinfo are bad", // PN_EBADADDRS
+            "inet_pton failed",                              // PN_EPTON
         };
 
-        if (error >= 0 && error < 4) {
+        if (error >= 0 && error <= 4) {
             return error_strings[error];
         } else {
             return "Unknown error";
