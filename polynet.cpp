@@ -28,8 +28,7 @@ namespace pn {
 
     std::string socket_strerror(int error) {
 #ifdef _WIN32
-        static thread_local char error_string[1024];
-        memset(error_string, 0, sizeof(error_string));
+        char error_string[512];
 
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
             NULL,
