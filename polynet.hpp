@@ -67,11 +67,19 @@
     #define PN_SD_BOTH    SHUT_RDWR
 
     #if __BYTE_ORDER == __BIG_ENDIAN
-        #define htonll(num) (num)
-        #define ntohll(num) (num)
+        #ifndef htonll
+            #define htonll(num) (num)
+        #endif
+        #ifndef ntohll
+            #define ntohll(num) (num)
+        #endif
     #else
-        #define htonll(num) ((((uint64_t) htonl(num)) << 32) | htonl(num >> 32))
-        #define ntohll(num) ((((uint64_t) ntohl(num)) << 32) | ntohl(num >> 32))
+        #ifndef htonll
+            #define htonll(num) ((((uint64_t) htonl(num)) << 32) | htonl(((uint64_t) num) >> 32))
+        #endif
+        #ifndef ntohll
+            #define ntohll(num) ((((uint64_t) ntohl(num)) << 32) | ntohl(((uint64_t) num) >> 32))
+        #endif
     #endif
 #endif
 #define PN_OK 0
