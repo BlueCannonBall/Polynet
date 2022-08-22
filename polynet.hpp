@@ -75,10 +75,16 @@
         #endif
     #else
         #ifndef htonll
-            #define htonll(num) ((((uint64_t) htonl(num)) << 32) | htonl(((uint64_t) num) >> 32))
+            #define htonll(num) ({                                      \
+                uint64_t _num = num;                                    \
+                ((((uint64_t) htonl(_num)) << 32) | htonl(_num >> 32)); \
+            })
         #endif
         #ifndef ntohll
-            #define ntohll(num) ((((uint64_t) ntohl(num)) << 32) | ntohl(((uint64_t) num) >> 32))
+            #define ntohll(num) ({                                      \
+                uint64_t _num = num;                                    \
+                ((((uint64_t) ntohl(_num)) << 32) | ntohl(_num >> 32)); \
+            })
         #endif
     #endif
 #endif
