@@ -355,6 +355,10 @@ namespace pn {
         inline bool is_valid(void) const {
             return this->fd != PN_INVALID_SOCKFD;
         }
+
+        inline operator bool(void) const {
+            return this->is_valid();
+        }
     };
 
     template <class Base, int Socktype, int Protocol>
