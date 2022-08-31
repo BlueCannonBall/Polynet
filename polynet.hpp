@@ -12,7 +12,7 @@
     #include <winsock2.h>
     #include <ws2tcpip.h>
 
-    #ifdef _MSC_VER
+    #if defined(_MSC_VER) || defined(__clang__)
         #pragma comment(lib, "ws2_32.lib")
     #endif
 #else
