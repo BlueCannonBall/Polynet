@@ -13,7 +13,7 @@
     #include <ws2tcpip.h>
 
     // Afaik the only Windows compilers that don't support this are GNU compilers
-    #if defined(__GNUC__) && !defined(__clang__)
+    #if (!defined(__GNUC__)) || defined(__clang__)
         #pragma comment(lib, "ws2_32.lib")
     #endif
 #else
