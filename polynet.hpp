@@ -499,18 +499,18 @@ namespace pn {
             ref_count = NULL;
         }
 
-        inline ref_count_t use_count() const {
+        inline ref_count_t use_count(void) const {
             return *ref_count;
         }
     };
 
     template <typename T, typename... Ts>
-    UniqueSock<T> make_unique(Ts... args) {
+    inline UniqueSock<T> make_unique(Ts... args) {
         return UniqueSock<T>(T(args...));
     }
 
     template <typename T, typename... Ts>
-    SharedSock<T> make_shared(Ts... args) {
+    inline SharedSock<T> make_shared(Ts... args) {
         return SharedSock<T>(T(args...));
     }
 
