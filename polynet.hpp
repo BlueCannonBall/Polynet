@@ -441,12 +441,10 @@ namespace pn {
     };
 
     template <typename T>
-    class WeakSock;
-
-    template <typename T>
     class SharedSock: public BasicSock<T>, public SharedBase {
     private:
-        friend class WeakSock<T>;
+        template <typename U>
+        friend class WeakSock;
 
         void increment(void) {
             if (this->control_block) {
@@ -474,20 +472,25 @@ namespace pn {
 
     public:
         SharedSock(void) = default;
-        SharedSock(const T& sock) {
+        template <typename U>
+        SharedSock(const U& sock) {
             *this = sock;
         }
-        SharedSock(UniqueSock<T>&& unique_sock) {
+        template <typename U>
+        SharedSock(UniqueSock<U>&& unique_sock) {
             *this = unique_sock;
         }
-        SharedSock(const SharedSock<T>& shared_sock) {
+        template <typename U>
+        SharedSock(const SharedSock<U>& shared_sock) {
             *this = shared_sock;
         }
-        SharedSock(SharedSock<T>&& shared_sock) {
+        template <typename U>
+        SharedSock(SharedSock<U>&& shared_sock) {
             *this = std::move(shared_sock);
         }
 
-        inline SharedSock<T>& operator=(const T& sock) {
+        template <typename U>
+        inline SharedSock<T>& operator=(const U& sock) {
             if (&this->sock != &sock) {
                 decrement();
                 this->sock = sock;
@@ -496,16 +499,18 @@ namespace pn {
             return *this;
         }
 
-        inline SharedSock<T>& operator=(UniqueSock<T>&& unique_sock) {
+        template <typename U>
+        inline SharedSock<T>& operator=(UniqueSock<U>&& unique_sock) {
             if (&this->sock != &unique_sock.sock) {
                 decrement();
-                this->sock = std::exchange(unique_sock.sock, T());
+                this->sock = std::exchange(unique_sock.sock, U());
                 this->control_block = new typename SharedBase::ControlBlock(1, 0);
             }
             return *this;
         }
 
-        inline SharedSock<T>& operator=(const SharedSock<T>& shared_sock) {
+        template <typename U>
+        inline SharedSock<T>& operator=(const SharedSock<U>& shared_sock) {
             if (this != &shared_sock) {
                 decrement();
                 this->sock = shared_sock.sock;
@@ -515,10 +520,11 @@ namespace pn {
             return *this;
         }
 
-        inline SharedSock<T>& operator=(SharedSock<T>&& shared_sock) {
+        template <typename U>
+        inline SharedSock<T>& operator=(SharedSock<U>&& shared_sock) {
             if (this != &shared_sock) {
                 decrement();
-                this->sock = std::exchange(shared_sock.sock, T());
+                this->sock = std::exchange(shared_sock.sock, U());
                 this->control_block = std::exchange(shared_sock.control_block, NULL);
             }
             return *this;
@@ -558,17 +564,21 @@ namespace pn {
 
     public:
         WeakSock(void) = default;
-        WeakSock(const SharedSock<T>& shared_sock) {
+        template <typename U>
+        WeakSock(const SharedSock<U>& shared_sock) {
             *this = shared_sock;
         }
-        WeakSock(const WeakSock<T>& weak_sock) {
+        template <typename U>
+        WeakSock(const WeakSock<U>& weak_sock) {
             *this = weak_sock;
         }
-        WeakSock(WeakSock<T>&& weak_sock) {
+        template <typename U>
+        WeakSock(WeakSock<U>&& weak_sock) {
             *this = weak_sock;
         }
 
-        inline WeakSock<T>& operator=(const SharedSock<T>& shared_sock) {
+        template <typename U>
+        inline WeakSock<T>& operator=(const SharedSock<U>& shared_sock) {
             if (&this->sock != &shared_sock.sock && &this->control_block != &shared_sock.control_block) {
                 decrement();
                 sock = shared_sock.sock;
@@ -578,7 +588,8 @@ namespace pn {
             return *this;
         }
 
-        inline WeakSock<T>& operator=(const WeakSock<T>& weak_sock) {
+        template <typename U>
+        inline WeakSock<T>& operator=(const WeakSock<U>& weak_sock) {
             if (this != &weak_sock) {
                 decrement();
                 sock = weak_sock.sock;
@@ -588,10 +599,11 @@ namespace pn {
             return *this;
         }
 
-        inline WeakSock<T>& operator=(WeakSock<T>&& weak_sock) {
+        template <typename U>
+        inline WeakSock<T>& operator=(WeakSock<U>&& weak_sock) {
             if (this != &weak_sock) {
                 decrement();
-                sock = std::exchange(weak_sock.sock, T());
+                sock = std::exchange(weak_sock.sock, U());
                 this->control_block = std::exchange(weak_sock.control_block, NULL);
             }
             return *this;
