@@ -239,7 +239,7 @@ namespace pn {
 
     inline int inet_ntop(int af, const void* src, std::string& ret) {
         char result[128];
-        if (::inet_ntop(af, src, result, sizeof(ret)) == NULL) {
+        if (::inet_ntop(af, src, result, sizeof(result)) == NULL) {
             detail::set_last_socket_error(detail::get_last_system_error());
             detail::set_last_error(PN_ESOCKET);
             return PN_ERROR;
@@ -333,7 +333,7 @@ namespace pn {
         }
     };
 
-    // THIS CLASS IS JUST A BASE CLASS
+    // THIS IS JUST A BASE CLASS
     template <typename T>
     class BasicSock {
     protected:
