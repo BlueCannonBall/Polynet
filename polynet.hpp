@@ -37,6 +37,7 @@
 #endif
 
 // Other includes
+#include <atomic>
 #include <cerrno>
 #include <cstddef>
 #include <cstdint>
@@ -106,6 +107,7 @@ namespace pn {
     typedef int sockfd_t;
     typedef unsigned int socklen_t;
 #endif
+    typedef unsigned long ref_count_t;
 
     namespace detail {
         extern thread_local int last_error;
@@ -268,10 +270,6 @@ namespace pn {
                                           // connected to for clients
 
         Socket(void) = default;
-        Socket(const Socket&) = default;
-        Socket(Socket&& s) {
-            *this = std::move(s);
-        }
         Socket(sockfd_t fd) :
             fd(fd) { }
         Socket(struct sockaddr addr, socklen_t addrlen) :
@@ -281,27 +279,6 @@ namespace pn {
             fd(fd),
             addr(addr),
             addrlen(addrlen) { }
-
-        Socket& operator=(const Socket&) = default;
-        inline Socket& operator=(Socket&& s) {
-            if (this != &s) {
-                this->close(false);
-
-                this->fd = s.fd;
-                this->addr = s.addr;
-                this->addrlen = s.addrlen;
-
-                s.fd = PN_INVALID_SOCKFD;
-                s.addr = {0};
-                s.addrlen = sizeof(s.addr);
-            }
-
-            return *this;
-        }
-
-        ~Socket(void) {
-            this->close(false);
-        }
 
         inline int setsockopt(int level, int optname, const char* optval, socklen_t optlen) {
             if (::setsockopt(this->fd, level, optname, optval, optlen) == PN_ERROR) {
@@ -347,41 +324,206 @@ namespace pn {
             return PN_OK;
         }
 
-        inline sockfd_t release(void) {
-            sockfd_t old_fd = this->fd;
-            this->fd = PN_INVALID_SOCKFD;
-            return old_fd;
-        }
-
         inline bool is_valid(void) const {
             return this->fd != PN_INVALID_SOCKFD;
         }
 
         inline operator bool(void) const {
-            return this->is_valid();
+            return is_valid();
         }
     };
+
+    // THIS CLASS IS JUST A BASE CLASS
+    template <typename T>
+    class BasicSock {
+    protected:
+        T sock;
+
+    public:
+        typedef T sock_type;
+
+        inline const T& get(void) const {
+            return sock;
+        }
+
+        inline T& get(void) {
+            return sock;
+        }
+
+        inline const T& operator*(void) const {
+            return sock;
+        }
+
+        inline T& operator*(void) {
+            return sock;
+        }
+
+        inline const T* operator->(void) const {
+            return &sock;
+        }
+
+        inline T* operator->(void) {
+            return &sock;
+        }
+
+        inline bool is_valid(void) const {
+            return sock.is_valid();
+        }
+
+        inline operator bool(void) const {
+            return is_valid();
+        }
+    };
+
+    template <typename T>
+    class UniqueSock: public BasicSock<T> {
+    public:
+        UniqueSock(void) = default;
+        UniqueSock(const T& sock) {
+            *this = sock;
+        }
+        UniqueSock(UniqueSock<T>&& unique_sock) {
+            *this = std::move(unique_sock);
+        }
+
+        inline UniqueSock<T>& operator=(const T& sock) {
+            if (&this->sock != &sock) {
+                this->sock.close(/* Reset fd */ false);
+                this->sock = sock;
+            }
+            return *this;
+        }
+
+        inline UniqueSock<T>& operator=(UniqueSock<T>&& unique_sock) {
+            if (this != &unique_sock) {
+                this->sock.close(/* Reset fd */ false);
+                this->sock = std::exchange(unique_sock.sock, T());
+            }
+            return *this;
+        }
+
+        inline ~UniqueSock(void) {
+            this->sock.close(/* Reset fd */ false);
+        }
+
+        inline void reset(void) {
+            this->sock.close(/* Reset fd */ false);
+            this->sock = T();
+        }
+    };
+
+    template <typename T>
+    class SharedSock: public BasicSock<T> {
+    protected:
+        std::atomic<ref_count_t>* ref_count = NULL;
+
+    public:
+        SharedSock(void) = default;
+        SharedSock(const T& sock) {
+            *this = sock;
+        }
+        SharedSock(UniqueSock<T>&& unique_sock) {
+            *this = unique_sock;
+        }
+        SharedSock(const SharedSock<T>& shared_sock) {
+            *this = shared_sock;
+        }
+        SharedSock(SharedSock<T>&& shared_sock) {
+            *this = std::move(shared_sock);
+        }
+
+        inline SharedSock<T>& operator=(const T& sock) {
+            if (&this->sock != &sock) {
+                if (this->ref_count && !(--(*this->ref_count))) {
+                    this->sock.close(/* Reset fd */ false);
+                    delete this->ref_count;
+                }
+                this->sock = sock;
+                this->ref_count = new std::atomic<ref_count_t>(1);
+            }
+            return *this;
+        }
+
+        inline SharedSock<T>& operator=(UniqueSock<T>&& unique_sock) {
+            if (&this->sock != &unique_sock.sock) {
+                if (this->ref_count && !(--(*this->ref_count))) {
+                    this->sock.close(/* Reset fd */ false);
+                    delete this->ref_count;
+                }
+                this->sock = std::exchange(unique_sock.sock, T());
+                this->ref_count = new std::atomic<ref_count_t>(1);
+            }
+            return *this;
+        }
+
+        inline SharedSock<T>& operator=(const SharedSock<T>& shared_sock) {
+            if (this != &shared_sock) {
+                if (this->ref_count && !(--(*this->ref_count))) {
+                    this->sock.close(/* Reset fd */ false);
+                    delete this->ref_count;
+                }
+                this->sock = shared_sock.sock;
+                this->ref_count = shared_sock.ref_count;
+                if (ref_count) {
+                    (*ref_count)++;
+                }
+            }
+            return *this;
+        }
+
+        inline SharedSock<T>& operator=(SharedSock<T>&& shared_sock) {
+            if (this != &shared_sock) {
+                if (this->ref_count && !(--(*this->ref_count))) {
+                    this->sock.close(/* Reset fd */ false);
+                    delete this->ref_count;
+                }
+                this->sock = std::exchange(shared_sock.sock, T());
+                this->ref_count = std::exchange(shared_sock.ref_count, NULL);
+            }
+            return *this;
+        }
+
+        inline ~SharedSock(void) {
+            if (ref_count && !(--(*ref_count))) {
+                this->sock.close(/* Reset fd */ false);
+                delete ref_count;
+            }
+        }
+
+        inline void reset(void) {
+            if (ref_count && !(--(*ref_count))) {
+                this->sock.close(/* Reset fd */ false);
+                delete ref_count;
+            }
+            this->sock = T();
+            ref_count = NULL;
+        }
+
+        inline ref_count_t use_count() const {
+            return *ref_count;
+        }
+    };
+
+    template <typename T, typename... Ts>
+    UniqueSock<T> make_unique(Ts... args) {
+        return UniqueSock<T>(T(args...));
+    }
+
+    template <typename T, typename... Ts>
+    SharedSock<T> make_shared(Ts... args) {
+        return SharedSock<T>(T(args...));
+    }
 
     template <class Base, int Socktype, int Protocol>
     class Server: public Base {
     public:
         Server(void) = default;
-        Server(const Server&) = default;
-        Server(Server&& s) {
-            *this = std::move(s);
-        }
         Server(sockfd_t fd) :
             Base(fd) { }
         Server(struct sockaddr addr, socklen_t addrlen) :
             Base(addr, addrlen) { }
         Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
             Base(fd, addr, addrlen) { }
-
-        Server& operator=(const Server&) = default;
-        inline Server& operator=(Server&& s) {
-            Base::operator=(std::move(s));
-            return *this;
-        }
 
         int bind(const std::string& host, const std::string& port) {
             struct addrinfo* ai_list;
@@ -466,22 +608,12 @@ namespace pn {
     class Client: public Base {
     public:
         Client(void) = default;
-        Client(const Client&) = default;
-        Client(Client&& s) {
-            *this = std::move(s);
-        }
         Client(sockfd_t fd) :
             Base(fd) { }
         Client(struct sockaddr addr, socklen_t addrlen) :
             Base(addr, addrlen) { }
         Client(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
             Base(fd, addr, addrlen) { }
-
-        Client& operator=(const Client&) = default;
-        inline Client& operator=(Client&& s) {
-            Base::operator=(std::move(s));
-            return *this;
-        }
 
         int connect(const std::string& host, const std::string& port) {
             struct addrinfo* ai_list;
@@ -551,22 +683,12 @@ namespace pn {
         class Connection: public Socket {
         public:
             Connection(void) = default;
-            Connection(const Connection&) = default;
-            Connection(Connection&& s) {
-                *this = std::move(s);
-            }
             Connection(sockfd_t fd) :
                 Socket(fd) { }
             Connection(struct sockaddr addr, socklen_t addrlen) :
                 Socket(addr, addrlen) { }
             Connection(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 Socket(fd, addr, addrlen) { }
-
-            Connection& operator=(const Connection&) = default;
-            inline Connection& operator=(Connection&& s) {
-                Socket::operator=(std::move(s));
-                return *this;
-            }
 
             inline ssize_t send(const char* buf, size_t len, int flags = 0) {
                 ssize_t result;
@@ -593,27 +715,12 @@ namespace pn {
 
         public:
             Server(void) = default;
-            Server(const Server&) = default;
-            Server(Server&& s) {
-                *this = std::move(s);
-            }
             Server(sockfd_t fd) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd) { }
             Server(struct sockaddr addr, socklen_t addrlen) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) { }
             Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) { }
-
-            Server& operator=(const Server&) = default;
-            inline Server& operator=(Server&& s) {
-                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>::operator=(std::move(s));
-                if (this != &s) {
-                    this->backlog = s.backlog;
-                    s.backlog = -1;
-                }
-
-                return *this;
-            }
 
             // Return false from the callback to stop listening
             int listen(const std::function<bool(Connection&, void*)>& cb, int backlog = 128, void* data = NULL);
@@ -626,21 +733,12 @@ namespace pn {
         class Socket: public pn::Socket {
         public:
             Socket(void) = default;
-            Socket(const Socket&) = default;
-            Socket(Socket&& s) :
-                pn::Socket(std::move(s)) { }
             Socket(sockfd_t fd) :
                 pn::Socket(fd) { }
             Socket(struct sockaddr addr, socklen_t addrlen) :
                 pn::Socket(addr, addrlen) { }
             Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Socket(fd, addr, addrlen) { }
-
-            Socket& operator=(const Socket&) = default;
-            inline Socket& operator=(Socket&& s) {
-                pn::Socket::operator=(std::move(s));
-                return *this;
-            }
 
             inline ssize_t sendto(const char* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 ssize_t result;
