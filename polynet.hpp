@@ -464,9 +464,7 @@ namespace pn {
                 }
                 this->sock = shared_sock.sock;
                 this->ref_count = shared_sock.ref_count;
-                if (ref_count) {
-                    (*ref_count)++;
-                }
+                if (ref_count) (*ref_count)++;
             }
             return *this;
         }
