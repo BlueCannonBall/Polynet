@@ -145,13 +145,6 @@ namespace pn {
 #endif
         }
 
-        template <typename T>
-        inline T exchange(T& a, const T& b) {
-            T ret = std::move(a);
-            a = b;
-            return ret;
-        }
-
         class ControlBlock {
         public:
             use_count_t use_count;
@@ -382,7 +375,7 @@ namespace pn {
         template <typename U>
         inline UniqueSock<T>& operator=(UniqueSock&& unique_sock) {
             sock.close(/* Reset fd */ false);
-            sock = detail::exchange(unique_sock.sock, U());
+            sock = std::exchange(unique_sock.sock, U());
             return *this;
         }
 
@@ -424,7 +417,7 @@ namespace pn {
         }
 
         inline T release(void) {
-            return detail::exchange(sock, T());
+            return std::exchange(sock, T());
         }
     };
 
@@ -490,7 +483,7 @@ namespace pn {
         template <typename U>
         inline SharedSock<T>& operator=(UniqueSock<U>&& unique_sock) {
             decrement();
-            sock = detail::exchange(unique_sock.sock, U());
+            sock = std::exchange(unique_sock.sock, U());
             control_block = new detail::ControlBlock(1, 0);
             return *this;
         }
@@ -507,8 +500,8 @@ namespace pn {
         template <typename U>
         inline SharedSock<T>& operator=(SharedSock<U>&& shared_sock) {
             decrement();
-            sock = detail::exchange(shared_sock.sock, U());
-            control_block = detail::exchange(shared_sock.control_block, NULL);
+            sock = std::exchange(shared_sock.sock, U());
+            control_block = std::exchange(shared_sock.control_block, (detail::ControlBlock*) NULL);
             return *this;
         }
 
@@ -634,8 +627,8 @@ namespace pn {
         template <typename U>
         inline WeakSock<T>& operator=(WeakSock<U>&& weak_sock) {
             decrement();
-            sock = detail::exchange(weak_sock.sock, U());
-            control_block = detail::exchange(weak_sock.control_block, NULL);
+            sock = std::exchange(weak_sock.sock, U());
+            control_block = std::exchange(weak_sock.control_block, (detail::ControlBlock*) NULL);
             return *this;
         }
 
