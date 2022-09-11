@@ -384,18 +384,14 @@ namespace pn {
         }
 
         inline UniqueSock<T>& operator=(const T& sock) {
-            if (&this->sock != &sock) {
-                this->sock.close(/* Reset fd */ false);
-                this->sock = sock;
-            }
+            this->sock.close(/* Reset fd */ false);
+            this->sock = sock;
             return *this;
         }
 
         inline UniqueSock<T>& operator=(UniqueSock<T>&& unique_sock) {
-            if (this != &unique_sock) {
-                this->sock.close(/* Reset fd */ false);
-                this->sock = std::exchange(unique_sock.sock, T());
-            }
+            this->sock.close(/* Reset fd */ false);
+            this->sock = std::exchange(unique_sock.sock, T());
             return *this;
         }
 
@@ -491,42 +487,34 @@ namespace pn {
 
         template <typename U>
         inline SharedSock<T>& operator=(const U& sock) {
-            if (&this->sock != &sock) {
-                decrement();
-                this->sock = sock;
-                this->control_block = new typename SharedBase::ControlBlock(1, 0);
-            }
+            decrement();
+            this->sock = sock;
+            this->control_block = new typename SharedBase::ControlBlock(1, 0);
             return *this;
         }
 
         template <typename U>
         inline SharedSock<T>& operator=(UniqueSock<U>&& unique_sock) {
-            if (&this->sock != &unique_sock.sock) {
-                decrement();
-                this->sock = std::exchange(unique_sock.sock, U());
-                this->control_block = new typename SharedBase::ControlBlock(1, 0);
-            }
+            decrement();
+            this->sock = std::exchange(unique_sock.sock, U());
+            this->control_block = new typename SharedBase::ControlBlock(1, 0);
             return *this;
         }
 
         template <typename U>
         inline SharedSock<T>& operator=(const SharedSock<U>& shared_sock) {
-            if (this != &shared_sock) {
-                decrement();
-                this->sock = shared_sock.sock;
-                this->control_block = shared_sock.control_block;
-                increment();
-            }
+            decrement();
+            this->sock = shared_sock.sock;
+            this->control_block = shared_sock.control_block;
+            increment();
             return *this;
         }
 
         template <typename U>
         inline SharedSock<T>& operator=(SharedSock<U>&& shared_sock) {
-            if (this != &shared_sock) {
-                decrement();
-                this->sock = std::exchange(shared_sock.sock, U());
-                this->control_block = std::exchange(shared_sock.control_block, NULL);
-            }
+            decrement();
+            this->sock = std::exchange(shared_sock.sock, U());
+            this->control_block = std::exchange(shared_sock.control_block, NULL);
             return *this;
         }
 
@@ -579,33 +567,27 @@ namespace pn {
 
         template <typename U>
         inline WeakSock<T>& operator=(const SharedSock<U>& shared_sock) {
-            if (&this->sock != &shared_sock.sock && &this->control_block != &shared_sock.control_block) {
-                decrement();
-                sock = shared_sock.sock;
-                this->control_block = shared_sock.control_block;
-                increment();
-            }
+            decrement();
+            sock = shared_sock.sock;
+            this->control_block = shared_sock.control_block;
+            increment();
             return *this;
         }
 
         template <typename U>
         inline WeakSock<T>& operator=(const WeakSock<U>& weak_sock) {
-            if (this != &weak_sock) {
-                decrement();
-                sock = weak_sock.sock;
-                this->control_block = weak_sock.control_block;
-                increment();
-            }
+            decrement();
+            sock = weak_sock.sock;
+            this->control_block = weak_sock.control_block;
+            increment();
             return *this;
         }
 
         template <typename U>
         inline WeakSock<T>& operator=(WeakSock<U>&& weak_sock) {
-            if (this != &weak_sock) {
-                decrement();
-                sock = std::exchange(weak_sock.sock, U());
-                this->control_block = std::exchange(weak_sock.control_block, NULL);
-            }
+            decrement();
+            sock = std::exchange(weak_sock.sock, U());
+            this->control_block = std::exchange(weak_sock.control_block, NULL);
             return *this;
         }
 
