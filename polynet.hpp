@@ -143,6 +143,17 @@ namespace pn {
             return close(fd);
 #endif
         }
+
+        class ControlBlock {
+        public:
+            use_count_t use_count;
+            use_count_t weak_use_count;
+            std::mutex mtx;
+
+            ControlBlock(use_count_t use_count, use_count_t weak_use_count) :
+                use_count(use_count),
+                weak_use_count(weak_use_count) { }
+        };
     } // namespace detail
 
 #ifdef _WIN32
@@ -334,14 +345,42 @@ namespace pn {
         }
     };
 
-    // THIS IS JUST A BASE CLASS
     template <typename T>
-    class BasicSock {
+    class UniqueSock {
     protected:
+        template <typename U>
+        friend class SharedSock;
+
         T sock;
 
     public:
         typedef T sock_type;
+
+        UniqueSock(void) = default;
+        UniqueSock(const T& sock) {
+            *this = sock;
+        }
+        template <typename U>
+        UniqueSock(UniqueSock<U>&& unique_sock) {
+            *this = std::move(unique_sock);
+        }
+
+        inline UniqueSock<T>& operator=(const T& sock) {
+            this->sock.close(/* Reset fd */ false);
+            this->sock = sock;
+            return *this;
+        }
+
+        template <typename U>
+        inline UniqueSock<T>& operator=(UniqueSock&& unique_sock) {
+            sock.close(/* Reset fd */ false);
+            sock = std::exchange(unique_sock.sock, U());
+            return *this;
+        }
+
+        inline ~UniqueSock(void) {
+            sock.close(/* Reset fd */ false);
+        }
 
         inline T get(void) const {
             return sock;
@@ -370,108 +409,56 @@ namespace pn {
         inline operator bool(void) const {
             return is_valid();
         }
-    };
-
-    template <typename T>
-    class UniqueSock: public BasicSock<T> {
-    public:
-        UniqueSock(void) = default;
-        UniqueSock(const T& sock) {
-            *this = sock;
-        }
-        template <typename U>
-        UniqueSock(UniqueSock<U>&& unique_sock) {
-            *this = std::move(unique_sock);
-        }
-
-        inline UniqueSock<T>& operator=(const T& sock) {
-            this->sock.close(/* Reset fd */ false);
-            this->sock = sock;
-            return *this;
-        }
-
-        template <typename U>
-        inline UniqueSock<T>& operator=(UniqueSock<U>&& unique_sock) {
-            this->sock.close(/* Reset fd */ false);
-            this->sock = std::exchange(unique_sock.sock, U());
-            return *this;
-        }
-
-        inline ~UniqueSock(void) {
-            this->sock.close(/* Reset fd */ false);
-        }
 
         inline void reset(void) {
-            this->sock.close(/* Reset fd */ false);
-            this->sock = T();
+            sock.close(/* Reset fd */ false);
+            sock = T();
         }
 
         inline T release(void) {
-            return std::exchange(this->sock, T());
+            return std::exchange(sock, T());
         }
-    };
-
-    // THIS IS JUST A BASE CLASS
-    class SharedBase {
-    public:
-        class ControlBlock {
-        public:
-            use_count_t use_count;
-            use_count_t weak_use_count;
-            std::mutex mtx;
-
-            ControlBlock(use_count_t use_count, use_count_t weak_use_count) :
-                use_count(use_count),
-                weak_use_count(weak_use_count) { }
-        };
-
-        inline use_count_t use_count(void) const {
-            if (control_block) {
-                std::lock_guard<std::mutex> lock(control_block->mtx);
-                return control_block->use_count;
-            } else {
-                return 0; // Object is in invalid state
-            }
-        }
-
-    protected:
-        ControlBlock* control_block = NULL;
     };
 
     template <typename T>
-    class SharedSock: public BasicSock<T>, public SharedBase {
-    private:
+    class SharedSock {
+    protected:
+        T sock;
+        detail::ControlBlock* control_block = NULL;
+
         void increment(void) {
-            if (this->control_block) {
-                std::lock_guard<std::mutex> lock(this->control_block->mtx);
-                this->control_block->use_count++;
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                control_block->use_count++;
             }
         }
 
         void decrement(void) {
-            if (this->control_block) {
-                std::lock_guard<std::mutex> lock(this->control_block->mtx);
-                if (!--this->control_block->use_count) {
-                    this->sock.close(/* Reset fd */ false);
-                    if (!this->control_block->weak_use_count) {
-                        delete this->control_block;
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                if (!--control_block->use_count) {
+                    sock.close(/* Reset fd */ false);
+                    if (!control_block->weak_use_count) {
+                        delete control_block;
                     }
                 }
             }
         }
 
     public:
+        typedef T sock_type;
+
         SharedSock(void) = default;
-        SharedSock(const T& sock, ControlBlock* control_block) { // This ctor is not meant for normal use
-            this->sock = sock;
-            this->control_block = control_block;
-        }
+        // This ctor is not meant for normal use
+        SharedSock(const T& sock, detail::ControlBlock* control_block) :
+            sock(sock),
+            control_block(control_block) { }
         SharedSock(const T& sock) {
             *this = sock;
         }
         template <typename U>
         SharedSock(UniqueSock<U>&& unique_sock) {
-            *this = unique_sock;
+            *this = std::move(unique_sock);
         }
         SharedSock(const SharedSock<T>& shared_sock) {
             *this = shared_sock;
@@ -483,30 +470,30 @@ namespace pn {
         inline SharedSock<T>& operator=(const T& sock) {
             decrement();
             this->sock = sock;
-            this->control_block = new typename SharedBase::ControlBlock(1, 0);
+            control_block = new detail::ControlBlock(1, 0);
             return *this;
         }
 
         template <typename U>
         inline SharedSock<T>& operator=(UniqueSock<U>&& unique_sock) {
             decrement();
-            this->sock = std::exchange(unique_sock.sock, U());
-            this->control_block = new typename SharedBase::ControlBlock(1, 0);
+            sock = std::exchange(unique_sock.sock, U());
+            control_block = new detail::ControlBlock(1, 0);
             return *this;
         }
 
         inline SharedSock<T>& operator=(const SharedSock<T>& shared_sock) {
             decrement();
-            this->sock = shared_sock.sock;
-            this->control_block = shared_sock.control_block;
+            sock = shared_sock.sock;
+            control_block = shared_sock.control_block;
             increment();
             return *this;
         }
 
         inline SharedSock<T>& operator=(SharedSock<T>&& shared_sock) {
             decrement();
-            this->sock = std::exchange(shared_sock.sock, T());
-            this->control_block = std::exchange(shared_sock.control_block, NULL);
+            sock = std::exchange(shared_sock.sock, T());
+            control_block = std::exchange(shared_sock.control_block, NULL);
             return *this;
         }
 
@@ -514,50 +501,90 @@ namespace pn {
             decrement();
         }
 
+        inline T get(void) const {
+            return sock;
+        }
+
+        inline const T& operator*(void) const {
+            return sock;
+        }
+
+        inline T& operator*(void) {
+            return sock;
+        }
+
+        inline const T* operator->(void) const {
+            return &sock;
+        }
+
+        inline T* operator->(void) {
+            return &sock;
+        }
+
+        inline bool is_valid(void) const {
+            return sock.is_valid();
+        }
+
+        inline operator bool(void) const {
+            return is_valid();
+        }
+
         inline void reset(void) {
             decrement();
-            this->sock = T();
-            this->control_block = NULL;
+            sock = T();
+            control_block = NULL;
+        }
+
+        inline use_count_t use_count(void) const {
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                return control_block->use_count;
+            } else {
+                return 0; // Object is in invalid state
+            }
         }
 
         template <typename U>
         inline operator SharedSock<U>() const {
-            SharedSock<U> ret(this->sock, this->control_block);
-            if (this->control_block) {
-                std::lock_guard<std::mutex> lock(this->control_block->mtx);
-                this->control_block->use_count++;
+            SharedSock<U> ret(sock, control_block);
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                control_block->use_count++;
             }
             return ret;
         }
     };
 
     template <typename T>
-    class WeakSock: public SharedBase {
-    private:
+    class WeakSock {
+    protected:
         T sock;
+        detail::ControlBlock* control_block = NULL;
 
         void increment(void) {
-            if (this->control_block) {
-                std::lock_guard<std::mutex> lock(this->control_block->mtx);
-                this->control_block->weak_use_count++;
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                control_block->weak_use_count++;
             }
         }
 
         void decrement(void) {
-            if (this->control_block) {
-                std::lock_guard<std::mutex> lock(this->control_block->mtx);
-                if ((!--this->control_block->weak_use_count) && !this->control_block->use_count) {
-                    delete this->control_block;
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                if ((!--control_block->weak_use_count) && !control_block->use_count) {
+                    delete control_block;
                 }
             }
         }
 
     public:
+        typedef T sock_type;
+
         WeakSock(void) = default;
-        WeakSock(const T& sock, ControlBlock* control_block) :
-            sock(sock) { // This ctor is not meant for normal use
-            this->control_block = control_block;
-        }
+        // This ctor is not meant for normal use
+        WeakSock(const T& sock, detail::ControlBlock* control_block) :
+            sock(sock),
+            control_block(control_block) { }
         WeakSock(const SharedSock<T>& shared_sock) {
             *this = shared_sock;
         }
@@ -571,7 +598,7 @@ namespace pn {
         inline WeakSock<T>& operator=(const SharedSock<T>& shared_sock) {
             decrement();
             sock = shared_sock.sock;
-            this->control_block = shared_sock.control_block;
+            control_block = shared_sock.control_block;
             increment();
             return *this;
         }
@@ -579,7 +606,7 @@ namespace pn {
         inline WeakSock<T>& operator=(const WeakSock<T>& weak_sock) {
             decrement();
             sock = weak_sock.sock;
-            this->control_block = weak_sock.control_block;
+            control_block = weak_sock.control_block;
             increment();
             return *this;
         }
@@ -587,7 +614,7 @@ namespace pn {
         inline WeakSock<T>& operator=(WeakSock<T>&& weak_sock) {
             decrement();
             sock = std::exchange(weak_sock.sock, T());
-            this->control_block = std::exchange(weak_sock.control_block, NULL);
+            control_block = std::exchange(weak_sock.control_block, NULL);
             return *this;
         }
 
@@ -595,35 +622,72 @@ namespace pn {
             decrement();
         }
 
+        inline T get(void) const {
+            return sock;
+        }
+
+        inline const T& operator*(void) const {
+            return sock;
+        }
+
+        inline T& operator*(void) {
+            return sock;
+        }
+
+        inline const T* operator->(void) const {
+            return &sock;
+        }
+
+        inline T* operator->(void) {
+            return &sock;
+        }
+
+        inline bool is_valid(void) const {
+            return sock.is_valid();
+        }
+
+        inline operator bool(void) const {
+            return is_valid();
+        }
+
         inline void reset(void) {
             decrement();
             sock = T();
-            this->control_block = NULL;
+            control_block = NULL;
+        }
+
+        inline use_count_t use_count(void) const {
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                return control_block->use_count;
+            } else {
+                return 0; // Object is in invalid state
+            }
         }
 
         inline bool expired(void) const {
             return !use_count();
         }
 
-        inline SharedSock<T> lock(void) const {
-            SharedSock<T> ret(this->sock, this->control_block);
-            if (this->control_block) {
-                std::lock_guard<std::mutex> lock(this->control_block->mtx);
-                if (this->control_block->use_count) {
-                    this->control_block->use_count++;
-                } else {
-                    return SharedSock<T>();
-                }
+        template <typename U>
+        inline operator WeakSock<U>() const {
+            WeakSock<U> ret(sock, control_block);
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                control_block->weak_use_count++;
             }
             return ret;
         }
 
-        template <typename U>
-        inline operator WeakSock<U>() const {
-            WeakSock<U> ret(this->sock, this->control_block);
-            if (this->control_block) {
-                std::lock_guard<std::mutex> lock(this->control_block->mtx);
-                this->control_block->weak_use_count++;
+        inline SharedSock<T> lock(void) const {
+            SharedSock<T> ret(sock, control_block);
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                if (control_block->use_count) {
+                    control_block->use_count++;
+                } else {
+                    return SharedSock<T>();
+                }
             }
             return ret;
         }
