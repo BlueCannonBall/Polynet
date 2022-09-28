@@ -48,13 +48,13 @@
 #include <string>
 #include <utility>
 
-#define _POLYWEB_COPY_CTOR_TEMPLATE(class_name, type1, type2, arg_name)                  \
+#define _POLYWEB_COPY_CTOR_TEMPLATE(class_name, type1, type2, arg_name)     \
     class_name(const class_name& arg_name) : class_name(arg_name, true) { } \
-    template <typename type2>                                                            \
+    template <typename type2>                                               \
     class_name(const class_name<type2>& arg_name, bool _same_type = false)
-#define _POLYWEB_MOVE_CTOR_TEMPLATE(class_name, type1, type2, arg_name)                        \
+#define _POLYWEB_MOVE_CTOR_TEMPLATE(class_name, type1, type2, arg_name)           \
     class_name(class_name&& arg_name) : class_name(std::move(arg_name), true) { } \
-    template <typename type2>                                                                  \
+    template <typename type2>                                                     \
     class_name(class_name<type2>&& arg_name, bool _same_type = false)
 #define _POLYWEB_COPY_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name)                                       \
     inline class_name& operator=(const class_name& arg_name) { return class_name::operator=<type1>(arg_name); } \
