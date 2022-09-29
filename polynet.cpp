@@ -32,12 +32,12 @@ namespace pn {
         char error_string[512];
 
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-            NULL,
+            nullptr,
             error,
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
             error_string,
             sizeof(error_string),
-            NULL);
+            nullptr);
 
         for (size_t i = 0; i < sizeof(error_string); i++) {
             if (error_string[i] == '\n') {

@@ -267,7 +267,7 @@ namespace pn {
 
     inline int inet_ntop(int af, const void* src, std::string& ret) {
         char result[128];
-        if (::inet_ntop(af, src, result, sizeof(result)) == NULL) {
+        if (::inet_ntop(af, src, result, sizeof(result)) == nullptr) {
             detail::set_last_socket_error(detail::get_last_system_error());
             detail::set_last_error(PN_ESOCKET);
             return PN_ERROR;
@@ -596,7 +596,7 @@ namespace pn {
         friend class WeakSock;
 
         T sock;
-        detail::ControlBlock* control_block = NULL;
+        detail::ControlBlock* control_block = nullptr;
 
         void increment() {
             if (control_block) {
@@ -671,7 +671,7 @@ namespace pn {
                 control_block = weak_sock.control_block;
             }
             weak_sock.sock = U();
-            weak_sock.control_block = NULL;
+            weak_sock.control_block = nullptr;
             return *this;
         }
 
@@ -682,7 +682,7 @@ namespace pn {
         inline void reset() {
             decrement();
             this->sock = T();
-            control_block = NULL;
+            control_block = nullptr;
         }
 
         inline bool is_valid() const {
@@ -738,7 +738,7 @@ namespace pn {
             Base(fd, addr, addrlen) { }
 
         int bind(const std::string& host, const std::string& port) {
-            std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(NULL, freeaddrinfo);
+            std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(nullptr, freeaddrinfo);
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
@@ -753,7 +753,7 @@ namespace pn {
             }
 
             struct addrinfo* ai_it;
-            for (ai_it = ai_list.get(); ai_it != NULL; ai_it = ai_it->ai_next) {
+            for (ai_it = ai_list.get(); ai_it != nullptr; ai_it = ai_it->ai_next) {
                 if (this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol) == PN_ERROR) {
                     continue;
                 }
@@ -773,7 +773,7 @@ namespace pn {
                     return PN_ERROR;
                 }
             }
-            if (ai_it == NULL) {
+            if (ai_it == nullptr) {
                 detail::set_last_error(PN_EBADADDRS);
                 return PN_ERROR;
             }
@@ -826,7 +826,7 @@ namespace pn {
             Base(fd, addr, addrlen) { }
 
         int connect(const std::string& host, const std::string& port) {
-            std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(NULL, freeaddrinfo);
+            std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(nullptr, freeaddrinfo);
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
@@ -841,7 +841,7 @@ namespace pn {
             }
 
             struct addrinfo* ai_it;
-            for (ai_it = ai_list.get(); ai_it != NULL; ai_it = ai_it->ai_next) {
+            for (ai_it = ai_list.get(); ai_it != nullptr; ai_it = ai_it->ai_next) {
                 if (this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol) == PN_ERROR) {
                     continue;
                 }
@@ -854,7 +854,7 @@ namespace pn {
                     return PN_ERROR;
                 }
             }
-            if (ai_it == NULL) {
+            if (ai_it == nullptr) {
                 detail::set_last_error(PN_EBADADDRS);
                 return PN_ERROR;
             }
@@ -932,7 +932,7 @@ namespace pn {
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) { }
 
             // Return false from the callback to stop listening
-            int listen(const std::function<bool(Connection&, void*)>& cb, int backlog = 128, void* data = NULL);
+            int listen(const std::function<bool(Connection&, void*)>& cb, int backlog = 128, void* data = nullptr);
         };
 
         using Client = pn::Client<Connection, SOCK_STREAM, IPPROTO_TCP>;
