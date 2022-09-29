@@ -380,6 +380,8 @@ namespace pn {
         T sock;
 
     public:
+        typedef T sock_type;
+
         UniqueSock() = default;
         UniqueSock(const T& sock) {
             this->sock = sock;
@@ -390,7 +392,7 @@ namespace pn {
 
         _POLYWEB_MOVE_ASSIGN_TEMPLATE(UniqueSock, T, U, unique_sock) {
             if (this->sock != unique_sock.sock) {
-                this->sock.close(false);
+                this->sock.close(/* Reset fd */ false);
                 this->sock = unique_sock.sock;
             }
             unique_sock.sock = U();
@@ -398,7 +400,7 @@ namespace pn {
         }
 
         ~UniqueSock() {
-            this->sock.close(false);
+            this->sock.close(/* Reset fd */ false);
         }
 
         inline T get() const {
@@ -419,6 +421,18 @@ namespace pn {
 
         inline T* operator->() {
             return &this->sock;
+        }
+
+        inline void reset() {
+            this->sock.close(/* Reset fd */ false);
+            this->sock = T();
+        }
+
+        inline void reset(const T& sock) {
+            if (this->sock != sock) {
+                this->sock.close(/* Reset fd */ false);
+                this->sock = sock;
+            }
         }
 
         inline bool is_valid() const {
@@ -452,7 +466,7 @@ namespace pn {
 
         void decrement() {
             if (!--control_block->use_count) {
-                this->sock.close(false);
+                this->sock.close(/* Reset fd */ false);
                 if (!control_block->weak_use_count) {
                     delete control_block;
                 }
@@ -464,6 +478,8 @@ namespace pn {
             control_block(control_block) { }
 
     public:
+        typedef T sock_type;
+
         SharedSock() = default;
         SharedSock(const T& sock) {
             this->sock = sock;
@@ -535,6 +551,20 @@ namespace pn {
             return &this->sock;
         }
 
+        inline void reset() {
+            decrement();
+            this->sock = T();
+            control_block = new detail::ControlBlock;
+        }
+
+        inline void reset(const T& sock) {
+            if (this->sock != sock) {
+                decrement();
+                this->sock = sock;
+                control_block = new detail::ControlBlock;
+            }
+        }
+
         inline bool is_valid() const {
             return this->sock.is_valid();
         }
@@ -570,6 +600,8 @@ namespace pn {
         }
 
     public:
+        typedef T sock_type;
+
         WeakSock() = default;
         _POLYWEB_COPY_CTOR_TEMPLATE(WeakSock, T, U, weak_sock) {
             *this = weak_sock;
@@ -634,6 +666,12 @@ namespace pn {
 
         ~WeakSock() {
             decrement();
+        }
+
+        inline void reset() {
+            decrement();
+            this->sock = T();
+            control_block = NULL;
         }
 
         inline bool is_valid() const {
