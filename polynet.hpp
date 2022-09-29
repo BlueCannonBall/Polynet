@@ -44,6 +44,7 @@
 #include <cstring>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -306,6 +307,16 @@ namespace pn {
             fd(fd),
             addr(addr),
             addrlen(addrlen) { }
+
+        // Don't use this if you are using bind or connect on pn::Server or pn::Client, respectively
+        inline int init(int domain, int type, int protocol) {
+            if ((this->fd = socket(domain, type, protocol)) == PN_INVALID_SOCKFD) {
+                detail::set_last_socket_error(detail::get_last_system_error());
+                detail::set_last_error(PN_ESOCKET);
+                return PN_ERROR;
+            }
+            return PN_OK;
+        }
 
         inline int setsockopt(int level, int optname, const char* optval, socklen_t optlen) {
             if (::setsockopt(this->fd, level, optname, optval, optlen) == PN_ERROR) {
@@ -727,26 +738,29 @@ namespace pn {
             Base(fd, addr, addrlen) { }
 
         int bind(const std::string& host, const std::string& port) {
-            struct addrinfo* ai_list;
+            std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(NULL, freeaddrinfo);
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
             hints.ai_protocol = Protocol;
 
-            if (getaddrinfo(host, port, &hints, &ai_list) == PN_ERROR) {
-                return PN_ERROR;
+            {
+                struct addrinfo* tmp;
+                if (getaddrinfo(host, port, &hints, &tmp) == PN_ERROR) {
+                    return PN_ERROR;
+                }
+                ai_list.reset(tmp);
             }
 
             struct addrinfo* ai_it;
-            for (ai_it = ai_list; ai_it != NULL; ai_it = ai_it->ai_next) {
-                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_INVALID_SOCKFD) {
+            for (ai_it = ai_list.get(); ai_it != NULL; ai_it = ai_it->ai_next) {
+                if (this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol) == PN_ERROR) {
                     continue;
                 }
 
                 {
                     const int value = 1;
                     if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, (const char*) &value, sizeof(int)) == PN_ERROR) {
-                        pn::freeaddrinfo(ai_list);
                         return PN_ERROR;
                     }
                 }
@@ -756,20 +770,17 @@ namespace pn {
                 }
 
                 if (Base::close(true, false) == PN_ERROR) {
-                    pn::freeaddrinfo(ai_list);
                     return PN_ERROR;
                 }
             }
             if (ai_it == NULL) {
                 detail::set_last_error(PN_EBADADDRS);
-                pn::freeaddrinfo(ai_list);
                 return PN_ERROR;
             }
 
             this->addr = *ai_it->ai_addr;
             this->addrlen = ai_it->ai_addrlen;
 
-            pn::freeaddrinfo(ai_list);
             return PN_OK;
         }
 
@@ -779,9 +790,7 @@ namespace pn {
         }
 
         int bind(struct sockaddr* addr, socklen_t addrlen) {
-            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_INVALID_SOCKFD) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
+            if (this->init(addr->sa_family, Socktype, Protocol) == PN_ERROR) {
                 return PN_ERROR;
             }
 
@@ -817,19 +826,23 @@ namespace pn {
             Base(fd, addr, addrlen) { }
 
         int connect(const std::string& host, const std::string& port) {
-            struct addrinfo* ai_list;
+            std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(NULL, freeaddrinfo);
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
             hints.ai_protocol = Protocol;
 
-            if (getaddrinfo(host, port, &hints, &ai_list) == PN_ERROR) {
-                return PN_ERROR;
+            {
+                struct addrinfo* tmp;
+                if (getaddrinfo(host, port, &hints, &tmp) == PN_ERROR) {
+                    return PN_ERROR;
+                }
+                ai_list.reset(tmp);
             }
 
             struct addrinfo* ai_it;
-            for (ai_it = ai_list; ai_it != NULL; ai_it = ai_it->ai_next) {
-                if ((this->fd = socket(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) == PN_INVALID_SOCKFD) {
+            for (ai_it = ai_list.get(); ai_it != NULL; ai_it = ai_it->ai_next) {
+                if (this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol) == PN_ERROR) {
                     continue;
                 }
 
@@ -838,20 +851,17 @@ namespace pn {
                 }
 
                 if (Base::close(true, false) == PN_ERROR) {
-                    pn::freeaddrinfo(ai_list);
                     return PN_ERROR;
                 }
             }
             if (ai_it == NULL) {
                 detail::set_last_error(PN_EBADADDRS);
-                pn::freeaddrinfo(ai_list);
                 return PN_ERROR;
             }
 
             this->addr = *ai_it->ai_addr;
             this->addrlen = ai_it->ai_addrlen;
 
-            pn::freeaddrinfo(ai_list);
             return PN_OK;
         }
 
@@ -861,9 +871,7 @@ namespace pn {
         }
 
         int connect(struct sockaddr* addr, socklen_t addrlen) {
-            if ((this->fd = socket(addr->sa_family, Socktype, Protocol)) == PN_INVALID_SOCKFD) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
+            if (this->init(addr->sa_family, Socktype, Protocol) == PN_ERROR) {
                 return PN_ERROR;
             }
 
