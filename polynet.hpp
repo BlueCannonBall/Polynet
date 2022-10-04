@@ -388,6 +388,9 @@ namespace pn {
         template <typename U>
         friend class SharedSock;
 
+        template <typename U>
+        friend class WeakSock;
+
         T sock;
 
     public:
@@ -454,6 +457,16 @@ namespace pn {
             return is_valid();
         }
 
+        template <typename U>
+        inline bool operator==(const U& other) const {
+            return this->sock == other.sock;
+        }
+
+        template <typename U>
+        inline bool operator!=(const U& other) const {
+            return this->sock != other.sock;
+        }
+
         inline T release() const {
             return std::exchange(this->sock, T());
         }
@@ -467,6 +480,9 @@ namespace pn {
 
         template <typename U>
         friend class WeakSock;
+
+        template <typename U>
+        friend class UniqueSock;
 
         T sock;
         detail::ControlBlock* control_block = new detail::ControlBlock;
@@ -584,6 +600,16 @@ namespace pn {
             return is_valid();
         }
 
+        template <typename U>
+        inline bool operator==(const U& other) const {
+            return this->sock == other.sock;
+        }
+
+        template <typename U>
+        inline bool operator!=(const U& other) const {
+            return this->sock != other.sock;
+        }
+
         inline use_count_t use_count() const {
             return control_block->use_count;
         }
@@ -594,6 +620,12 @@ namespace pn {
     protected:
         template <typename U>
         friend class WeakSock;
+
+        template <typename U>
+        friend class UniqueSock;
+
+        template <typename U>
+        friend class SharedSock;
 
         T sock;
         detail::ControlBlock* control_block = nullptr;
@@ -693,8 +725,14 @@ namespace pn {
             return is_valid();
         }
 
-        inline bool expired() const {
-            return !use_count();
+        template <typename U>
+        inline bool operator==(const U& other) const {
+            return this->sock == other.sock;
+        }
+
+        template <typename U>
+        inline bool operator!=(const U& other) const {
+            return this->sock != other.sock;
         }
 
         inline use_count_t use_count() const {
@@ -703,6 +741,10 @@ namespace pn {
             } else {
                 return 0; // Invalid state
             }
+        }
+
+        inline bool expired() const {
+            return !use_count();
         }
 
         inline SharedSock<T> lock() const {
