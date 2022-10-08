@@ -458,13 +458,13 @@ namespace pn {
         }
 
         template <typename U>
-        inline bool operator==(const U& other) const {
-            return this->sock == other.sock;
+        inline bool operator==(const U& other_sock) const {
+            return this->sock == other_sock.sock;
         }
 
         template <typename U>
-        inline bool operator!=(const U& other) const {
-            return this->sock != other.sock;
+        inline bool operator!=(const U& other_sock) const {
+            return this->sock != other_sock.sock;
         }
 
         inline T release() const {
@@ -601,13 +601,13 @@ namespace pn {
         }
 
         template <typename U>
-        inline bool operator==(const U& other) const {
-            return this->sock == other.sock;
+        inline bool operator==(const U& other_sock) const {
+            return this->sock == other_sock.sock;
         }
 
         template <typename U>
-        inline bool operator!=(const U& other) const {
-            return this->sock != other.sock;
+        inline bool operator!=(const U& other_sock) const {
+            return this->sock != other_sock.sock;
         }
 
         inline use_count_t use_count() const {
@@ -726,13 +726,13 @@ namespace pn {
         }
 
         template <typename U>
-        inline bool operator==(const U& other) const {
-            return this->sock == other.sock;
+        inline bool operator==(const U& other_sock) const {
+            return this->sock == other_sock.sock;
         }
 
         template <typename U>
-        inline bool operator!=(const U& other) const {
-            return this->sock != other.sock;
+        inline bool operator!=(const U& other_sock) const {
+            return this->sock != other_sock.sock;
         }
 
         inline use_count_t use_count() const {
