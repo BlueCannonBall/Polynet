@@ -266,7 +266,7 @@ namespace pn {
     }
 
     inline int inet_ntop(int af, const void* src, std::string& ret) {
-        char result[128];
+        char result[46];
         if (::inet_ntop(af, src, result, sizeof(result)) == nullptr) {
             detail::set_last_socket_error(detail::get_last_system_error());
             detail::set_last_error(PN_ESOCKET);
