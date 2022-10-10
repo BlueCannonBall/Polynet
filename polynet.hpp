@@ -18,6 +18,7 @@
     #endif
 #else
     #include <arpa/inet.h>
+    #include <errno.h>
     #include <netdb.h>
     #include <netinet/in.h>
     #include <netinet/ip.h>
@@ -38,7 +39,6 @@
 
 // Other includes
 #include <atomic>
-#include <cerrno>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>

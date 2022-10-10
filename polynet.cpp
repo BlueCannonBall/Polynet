@@ -92,9 +92,25 @@ namespace pn {
         for (;;) {
             Connection conn;
             if ((conn.fd = accept(this->fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-                return PN_ERROR;
+#ifdef _WIN32
+                if (detail::get_last_system_error() != WSAECONNRESET) {
+                    detail::set_last_socket_error(detail::get_last_system_error());
+                    detail::set_last_error(PN_ESOCKET);
+                    return PN_ERROR;
+                } else {
+                    continue;
+                }
+#else
+                switch (detail::get_last_system_error()) {
+                    default:
+                        detail::set_last_socket_error(detail::get_last_system_error());
+                        detail::set_last_error(PN_ESOCKET);
+                        return PN_ERROR;
+                    case EPROTO:
+                    case ECONNABORTED:
+                        continue;
+                }
+#endif
             }
 
             if (!cb(conn, data)) { // Connections CANNOT be accepted while the callback is blocking
