@@ -120,10 +120,8 @@
 namespace pn {
 #ifdef _WIN32
     typedef SOCKET sockfd_t;
-    typedef int socklen_t;
 #else
     typedef int sockfd_t;
-    typedef unsigned int socklen_t;
 #endif
     typedef unsigned long use_count_t;
 
@@ -246,9 +244,9 @@ namespace pn {
 
     std::string universal_strerror(int error = get_last_error());
 
-    inline int getaddrinfo(const std::string& host, const std::string& port, const struct addrinfo* hints, struct addrinfo** ret) {
+    inline int getaddrinfo(const std::string& hostname, const std::string& port, const struct addrinfo* hints, struct addrinfo** ret) {
         int result;
-        if ((result = ::getaddrinfo(host.c_str(), port.c_str(), hints, ret)) != PN_OK) {
+        if ((result = ::getaddrinfo(hostname.c_str(), port.c_str(), hints, ret)) != PN_OK) {
             detail::set_last_gai_error(result);
             detail::set_last_error(PN_EAI);
             return PN_ERROR;
@@ -256,9 +254,9 @@ namespace pn {
         return result;
     }
 
-    inline int getaddrinfo(const std::string& host, unsigned short port, const struct addrinfo* hints, struct addrinfo** ret) {
+    inline int getaddrinfo(const std::string& hostname, unsigned short port, const struct addrinfo* hints, struct addrinfo** ret) {
         std::string str_port = std::to_string(port);
-        return getaddrinfo(host, str_port, hints, ret);
+        return getaddrinfo(hostname, str_port, hints, ret);
     }
 
     inline void freeaddrinfo(struct addrinfo* ai) {
@@ -266,7 +264,7 @@ namespace pn {
     }
 
     inline int inet_ntop(int af, const void* src, std::string& ret) {
-        char result[46];
+        char result[INET6_ADDRSTRLEN];
         if (::inet_ntop(af, src, result, sizeof(result)) == nullptr) {
             detail::set_last_socket_error(detail::get_last_system_error());
             detail::set_last_error(PN_ESOCKET);
@@ -779,7 +777,7 @@ namespace pn {
         Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
             Base(fd, addr, addrlen) { }
 
-        int bind(const std::string& host, const std::string& port) {
+        int bind(const std::string& hostname, const std::string& port) {
             std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(nullptr, freeaddrinfo);
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
@@ -788,7 +786,7 @@ namespace pn {
 
             {
                 struct addrinfo* tmp;
-                if (getaddrinfo(host, port, &hints, &tmp) == PN_ERROR) {
+                if (getaddrinfo(hostname, port, &hints, &tmp) == PN_ERROR) {
                     return PN_ERROR;
                 }
                 ai_list.reset(tmp);
@@ -826,9 +824,9 @@ namespace pn {
             return PN_OK;
         }
 
-        inline int bind(const std::string& host, unsigned short port) {
+        inline int bind(const std::string& hostname, unsigned short port) {
             std::string str_port = std::to_string(port);
-            return bind(host, str_port);
+            return bind(hostname, str_port);
         }
 
         int bind(struct sockaddr* addr, socklen_t addrlen) {
@@ -867,7 +865,7 @@ namespace pn {
         Client(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
             Base(fd, addr, addrlen) { }
 
-        int connect(const std::string& host, const std::string& port) {
+        int connect(const std::string& hostname, const std::string& port) {
             std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(nullptr, freeaddrinfo);
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
@@ -876,7 +874,7 @@ namespace pn {
 
             {
                 struct addrinfo* tmp;
-                if (getaddrinfo(host, port, &hints, &tmp) == PN_ERROR) {
+                if (getaddrinfo(hostname, port, &hints, &tmp) == PN_ERROR) {
                     return PN_ERROR;
                 }
                 ai_list.reset(tmp);
@@ -907,9 +905,9 @@ namespace pn {
             return PN_OK;
         }
 
-        inline int connect(const std::string& host, unsigned short port) {
+        inline int connect(const std::string& hostname, unsigned short port) {
             std::string str_port = std::to_string(port);
-            return connect(host, str_port);
+            return connect(hostname, str_port);
         }
 
         int connect(struct sockaddr* addr, socklen_t addrlen) {
