@@ -87,23 +87,23 @@
     #define PN_SD_BOTH    SHUT_RDWR
 
     #if __BYTE_ORDER == __BIG_ENDIAN
-        #ifndef htonll
-            #define htonll(num) (num)
-        #endif
         #ifndef ntohll
             #define ntohll(num) (num)
         #endif
-    #else
         #ifndef htonll
-            #define htonll(num) ({                                      \
-                uint64_t _num = num;                                    \
-                ((((uint64_t) htonl(_num)) << 32) | htonl(_num >> 32)); \
+            #define htonll(num) (num)
+        #endif
+    #else
+        #ifndef ntohll
+            #define ntohll(num) ({                                    \
+                uint64_t _num = num;                                  \
+                (((uint64_t) ntohl(_num)) << 32) | ntohl(_num >> 32); \
             })
         #endif
-        #ifndef ntohll
-            #define ntohll(num) ({                                      \
-                uint64_t _num = num;                                    \
-                ((((uint64_t) ntohl(_num)) << 32) | ntohl(_num >> 32)); \
+        #ifndef htonll
+            #define htonll(num) ({                                    \
+                uint64_t _num = num;                                  \
+                (((uint64_t) htonl(_num)) << 32) | htonl(_num >> 32); \
             })
         #endif
     #endif
@@ -263,17 +263,6 @@ namespace pn {
         ::freeaddrinfo(ai);
     }
 
-    inline int inet_ntop(int af, const void* src, std::string& ret) {
-        char result[INET6_ADDRSTRLEN];
-        if (::inet_ntop(af, src, result, sizeof(result)) == nullptr) {
-            detail::set_last_socket_error(detail::get_last_system_error());
-            detail::set_last_error(PN_ESOCKET);
-            return PN_ERROR;
-        }
-        ret = result;
-        return PN_OK;
-    }
-
     inline int inet_pton(int af, const std::string& src, void* ret) {
         int result;
         if ((result = ::inet_pton(af, src.c_str(), ret)) == 0) {
@@ -284,6 +273,17 @@ namespace pn {
             detail::set_last_error(PN_ESOCKET);
             return PN_ERROR;
         }
+        return PN_OK;
+    }
+
+    inline int inet_ntop(int af, const void* src, std::string& ret) {
+        char result[INET6_ADDRSTRLEN];
+        if (::inet_ntop(af, src, result, sizeof(result)) == nullptr) {
+            detail::set_last_socket_error(detail::get_last_system_error());
+            detail::set_last_error(PN_ESOCKET);
+            return PN_ERROR;
+        }
+        ret = result;
         return PN_OK;
     }
 
