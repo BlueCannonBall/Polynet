@@ -106,6 +106,7 @@ namespace pn {
                         detail::set_last_socket_error(detail::get_last_system_error());
                         detail::set_last_error(PN_ESOCKET);
                         return PN_ERROR;
+                    case EPERM:
                     case EPROTO:
                     case ECONNABORTED:
                         continue;
