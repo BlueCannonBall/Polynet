@@ -12,8 +12,7 @@
     #include <winsock2.h>
     #include <ws2tcpip.h>
 
-    // Afaik the only Windows compilers that don't support this are GNU compilers
-    #if (!defined(__GNUC__)) || defined(__clang__)
+    #if defined(_MSC_VER) || defined(__clang__) || defined(__INTEL_COMPILER)
         #pragma comment(lib, "ws2_32.lib")
     #endif
 #else
@@ -66,7 +65,7 @@
     template <typename type2>                                                                                         \
     class_name& operator=(class_name<type2>&& arg_name)
 
-// Bridged constants
+// Bridged
 #ifdef _WIN32
     #define PN_ERROR          SOCKET_ERROR
     #define PN_INVALID_SOCKFD INVALID_SOCKET
@@ -110,7 +109,7 @@
 #endif
 #define PN_OK 0
 
-// General error categories
+// Errors
 #define PN_ESUCCESS  0
 #define PN_ESOCKET   1
 #define PN_EAI       2
