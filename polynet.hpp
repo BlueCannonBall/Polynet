@@ -939,18 +939,18 @@ namespace pn {
             Connection(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 Socket(fd, addr, addrlen) { }
 
-            inline ssize_t send(const char* buf, size_t len, int flags = 0) {
+            inline ssize_t send(const void* buf, size_t len, int flags = 0) {
                 ssize_t result;
-                if ((result = ::send(this->fd, buf, len, flags)) == PN_ERROR) {
+                if ((result = ::send(this->fd, (const char*) buf, len, flags)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
                 return result;
             }
 
-            inline ssize_t recv(char* buf, size_t len, int flags = 0) {
+            inline ssize_t recv(void* buf, size_t len, int flags = 0) {
                 ssize_t result;
-                if ((result = ::recv(this->fd, buf, len, flags)) == PN_ERROR) {
+                if ((result = ::recv(this->fd, (char*) buf, len, flags)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
@@ -989,18 +989,18 @@ namespace pn {
             Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
                 pn::Socket(fd, addr, addrlen) { }
 
-            inline ssize_t sendto(const char* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
+            inline ssize_t sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 ssize_t result;
-                if ((result = ::sendto(this->fd, buf, len, flags, dest_addr, addrlen)) == PN_ERROR) {
+                if ((result = ::sendto(this->fd, (const char*) buf, len, flags, dest_addr, addrlen)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
                 return result;
             }
 
-            inline ssize_t recvfrom(char* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
+            inline ssize_t recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
                 ssize_t result;
-                if ((result = ::recvfrom(this->fd, buf, len, flags, src_addr, addrlen)) == PN_ERROR) {
+                if ((result = ::recvfrom(this->fd, (char*) buf, len, flags, src_addr, addrlen)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
