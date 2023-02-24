@@ -48,13 +48,13 @@
 #include <string>
 #include <utility>
 
-#define _POLYNET_COPY_CTOR_TEMPLATE(class_name, type1, type2, arg_name)     \
-    class_name(const class_name& arg_name) : class_name(arg_name, true) { } \
-    template <typename type2>                                               \
+#define _POLYNET_COPY_CTOR_TEMPLATE(class_name, type1, type2, arg_name)   \
+    class_name(const class_name& arg_name): class_name(arg_name, true) {} \
+    template <typename type2>                                             \
     class_name(const class_name<type2>& arg_name, bool _same_type = false)
-#define _POLYNET_MOVE_CTOR_TEMPLATE(class_name, type1, type2, arg_name)           \
-    class_name(class_name&& arg_name) : class_name(std::move(arg_name), true) { } \
-    template <typename type2>                                                     \
+#define _POLYNET_MOVE_CTOR_TEMPLATE(class_name, type1, type2, arg_name)         \
+    class_name(class_name&& arg_name): class_name(std::move(arg_name), true) {} \
+    template <typename type2>                                                   \
     class_name(class_name<type2>&& arg_name, bool _same_type = false)
 #define _POLYNET_COPY_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name)                                       \
     inline class_name& operator=(const class_name& arg_name) { return class_name::operator=<type1>(arg_name); } \
@@ -163,9 +163,9 @@ namespace pn {
             std::atomic<use_count_t> use_count;
             std::atomic<use_count_t> weak_use_count;
 
-            ControlBlock(use_count_t use_count = 1, use_count_t weak_use_count = 0) :
+            ControlBlock(use_count_t use_count = 1, use_count_t weak_use_count = 0):
                 use_count(use_count),
-                weak_use_count(weak_use_count) { }
+                weak_use_count(weak_use_count) {}
         };
     } // namespace detail
 
@@ -295,15 +295,15 @@ namespace pn {
                                           // connected to for clients
 
         Socket() = default;
-        Socket(sockfd_t fd) :
-            fd(fd) { }
-        Socket(struct sockaddr addr, socklen_t addrlen) :
+        Socket(sockfd_t fd):
+            fd(fd) {}
+        Socket(struct sockaddr addr, socklen_t addrlen):
             addr(addr),
-            addrlen(addrlen) { }
-        Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
+            addrlen(addrlen) {}
+        Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
             fd(fd),
             addr(addr),
-            addrlen(addrlen) { }
+            addrlen(addrlen) {}
 
         // Don't use this if you are using bind or connect on pn::Server or pn::Client, respectively
         inline int init(int domain, int type, int protocol) {
@@ -497,9 +497,9 @@ namespace pn {
             }
         }
 
-        SharedSock(const T& sock, detail::ControlBlock* control_block) :
+        SharedSock(const T& sock, detail::ControlBlock* control_block):
             sock(sock),
-            control_block(control_block) { }
+            control_block(control_block) {}
 
     public:
         typedef T sock_type;
@@ -769,12 +769,12 @@ namespace pn {
     class Server: public Base {
     public:
         Server() = default;
-        Server(sockfd_t fd) :
-            Base(fd) { }
-        Server(struct sockaddr addr, socklen_t addrlen) :
-            Base(addr, addrlen) { }
-        Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
-            Base(fd, addr, addrlen) { }
+        Server(sockfd_t fd):
+            Base(fd) {}
+        Server(struct sockaddr addr, socklen_t addrlen):
+            Base(addr, addrlen) {}
+        Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+            Base(fd, addr, addrlen) {}
 
         int bind(const std::string& hostname, const std::string& port) {
             std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(nullptr, freeaddrinfo);
@@ -857,12 +857,12 @@ namespace pn {
     class Client: public Base {
     public:
         Client() = default;
-        Client(sockfd_t fd) :
-            Base(fd) { }
-        Client(struct sockaddr addr, socklen_t addrlen) :
-            Base(addr, addrlen) { }
-        Client(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
-            Base(fd, addr, addrlen) { }
+        Client(sockfd_t fd):
+            Base(fd) {}
+        Client(struct sockaddr addr, socklen_t addrlen):
+            Base(addr, addrlen) {}
+        Client(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+            Base(fd, addr, addrlen) {}
 
         int connect(const std::string& hostname, const std::string& port) {
             std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(nullptr, freeaddrinfo);
@@ -931,12 +931,12 @@ namespace pn {
         class Connection: public Socket {
         public:
             Connection() = default;
-            Connection(sockfd_t fd) :
-                Socket(fd) { }
-            Connection(struct sockaddr addr, socklen_t addrlen) :
-                Socket(addr, addrlen) { }
-            Connection(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
-                Socket(fd, addr, addrlen) { }
+            Connection(sockfd_t fd):
+                Socket(fd) {}
+            Connection(struct sockaddr addr, socklen_t addrlen):
+                Socket(addr, addrlen) {}
+            Connection(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+                Socket(fd, addr, addrlen) {}
 
             inline ssize_t send(const void* buf, size_t len, int flags = 0) {
                 ssize_t result;
@@ -963,12 +963,12 @@ namespace pn {
 
         public:
             Server() = default;
-            Server(sockfd_t fd) :
-                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd) { }
-            Server(struct sockaddr addr, socklen_t addrlen) :
-                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) { }
-            Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
-                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) { }
+            Server(sockfd_t fd):
+                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd) {}
+            Server(struct sockaddr addr, socklen_t addrlen):
+                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
+            Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
 
             // Return false from the callback to stop listening
             int listen(const std::function<bool(Connection&, void*)>& cb, int backlog = 128, void* data = nullptr);
@@ -981,12 +981,12 @@ namespace pn {
         class Socket: public pn::Socket {
         public:
             Socket() = default;
-            Socket(sockfd_t fd) :
-                pn::Socket(fd) { }
-            Socket(struct sockaddr addr, socklen_t addrlen) :
-                pn::Socket(addr, addrlen) { }
-            Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen) :
-                pn::Socket(fd, addr, addrlen) { }
+            Socket(sockfd_t fd):
+                pn::Socket(fd) {}
+            Socket(struct sockaddr addr, socklen_t addrlen):
+                pn::Socket(addr, addrlen) {}
+            Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+                pn::Socket(fd, addr, addrlen) {}
 
             inline ssize_t sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 ssize_t result;
