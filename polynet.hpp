@@ -48,19 +48,19 @@
 #include <string>
 #include <utility>
 
-#define _POLYWEB_COPY_CTOR_TEMPLATE(class_name, type1, type2, arg_name)     \
+#define _POLYNET_COPY_CTOR_TEMPLATE(class_name, type1, type2, arg_name)     \
     class_name(const class_name& arg_name) : class_name(arg_name, true) { } \
     template <typename type2>                                               \
     class_name(const class_name<type2>& arg_name, bool _same_type = false)
-#define _POLYWEB_MOVE_CTOR_TEMPLATE(class_name, type1, type2, arg_name)           \
+#define _POLYNET_MOVE_CTOR_TEMPLATE(class_name, type1, type2, arg_name)           \
     class_name(class_name&& arg_name) : class_name(std::move(arg_name), true) { } \
     template <typename type2>                                                     \
     class_name(class_name<type2>&& arg_name, bool _same_type = false)
-#define _POLYWEB_COPY_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name)                                       \
+#define _POLYNET_COPY_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name)                                       \
     inline class_name& operator=(const class_name& arg_name) { return class_name::operator=<type1>(arg_name); } \
     template <typename type2>                                                                                   \
     class_name& operator=(const class_name<type2>& arg_name)
-#define _POLYWEB_MOVE_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name)                                             \
+#define _POLYNET_MOVE_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name)                                             \
     inline class_name& operator=(class_name&& arg_name) { return class_name::operator=<type1>(std::move(arg_name)); } \
     template <typename type2>                                                                                         \
     class_name& operator=(class_name<type2>&& arg_name)
@@ -397,11 +397,11 @@ namespace pn {
         UniqueSock(const T& sock) {
             this->sock = sock;
         }
-        _POLYWEB_MOVE_CTOR_TEMPLATE(UniqueSock, T, U, unique_sock) {
+        _POLYNET_MOVE_CTOR_TEMPLATE(UniqueSock, T, U, unique_sock) {
             *this = std::move(unique_sock);
         }
 
-        _POLYWEB_MOVE_ASSIGN_TEMPLATE(UniqueSock, T, U, unique_sock) {
+        _POLYNET_MOVE_ASSIGN_TEMPLATE(UniqueSock, T, U, unique_sock) {
             if (this->sock != unique_sock.sock) {
                 this->sock.close(/* Reset fd */ false);
                 this->sock = unique_sock.sock;
@@ -508,10 +508,10 @@ namespace pn {
         SharedSock(const T& sock) {
             this->sock = sock;
         }
-        _POLYWEB_COPY_CTOR_TEMPLATE(SharedSock, T, U, shared_sock) {
+        _POLYNET_COPY_CTOR_TEMPLATE(SharedSock, T, U, shared_sock) {
             *this = shared_sock;
         }
-        _POLYWEB_MOVE_CTOR_TEMPLATE(SharedSock, T, U, shared_sock) {
+        _POLYNET_MOVE_CTOR_TEMPLATE(SharedSock, T, U, shared_sock) {
             *this = std::move(shared_sock);
         }
         template <typename U>
@@ -519,7 +519,7 @@ namespace pn {
             *this = std::move(unique_sock);
         }
 
-        _POLYWEB_COPY_ASSIGN_TEMPLATE(SharedSock, T, U, shared_sock) {
+        _POLYNET_COPY_ASSIGN_TEMPLATE(SharedSock, T, U, shared_sock) {
             if (this->sock != shared_sock.sock) {
                 decrement();
                 this->sock = shared_sock.sock;
@@ -529,7 +529,7 @@ namespace pn {
             return *this;
         }
 
-        _POLYWEB_MOVE_ASSIGN_TEMPLATE(SharedSock, T, U, shared_sock) {
+        _POLYNET_MOVE_ASSIGN_TEMPLATE(SharedSock, T, U, shared_sock) {
             if (this->sock != shared_sock.sock) {
                 decrement();
                 this->sock = shared_sock.sock;
@@ -643,10 +643,10 @@ namespace pn {
         typedef T sock_type;
 
         WeakSock() = default;
-        _POLYWEB_COPY_CTOR_TEMPLATE(WeakSock, T, U, weak_sock) {
+        _POLYNET_COPY_CTOR_TEMPLATE(WeakSock, T, U, weak_sock) {
             *this = weak_sock;
         }
-        _POLYWEB_MOVE_CTOR_TEMPLATE(WeakSock, T, U, weak_sock) {
+        _POLYNET_MOVE_CTOR_TEMPLATE(WeakSock, T, U, weak_sock) {
             *this = std::move(weak_sock);
         }
         template <typename U>
@@ -683,7 +683,7 @@ namespace pn {
             return *this;
         }
 
-        _POLYWEB_COPY_ASSIGN_TEMPLATE(WeakSock, T, U, weak_sock) {
+        _POLYNET_COPY_ASSIGN_TEMPLATE(WeakSock, T, U, weak_sock) {
             if (this->sock != weak_sock.sock) {
                 decrement();
                 this->sock = weak_sock.sock;
@@ -693,7 +693,7 @@ namespace pn {
             return *this;
         }
 
-        _POLYWEB_MOVE_ASSIGN_TEMPLATE(WeakSock, T, U, weak_sock) {
+        _POLYNET_MOVE_ASSIGN_TEMPLATE(WeakSock, T, U, weak_sock) {
             if (this->sock != weak_sock.sock) {
                 decrement();
                 this->sock = weak_sock.sock;
