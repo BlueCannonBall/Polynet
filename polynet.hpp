@@ -315,8 +315,8 @@ namespace pn {
             return PN_OK;
         }
 
-        inline int setsockopt(int level, int optname, const char* optval, socklen_t optlen) {
-            if (::setsockopt(this->fd, level, optname, optval, optlen) == PN_ERROR) {
+        inline int setsockopt(int level, int optname, const void* optval, socklen_t optlen) {
+            if (::setsockopt(this->fd, level, optname, (const char*) optval, optlen) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
@@ -324,8 +324,8 @@ namespace pn {
             return PN_OK;
         }
 
-        inline int getsockopt(int level, int optname, char* optval, socklen_t* optlen) {
-            if (::getsockopt(this->fd, level, optname, optval, optlen) == PN_ERROR) {
+        inline int getsockopt(int level, int optname, void* optval, socklen_t* optlen) {
+            if (::getsockopt(this->fd, level, optname, (char*) optval, optlen) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
@@ -799,7 +799,7 @@ namespace pn {
 
                 {
                     const int value = 1;
-                    if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, (const char*) &value, sizeof(int)) == PN_ERROR) {
+                    if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)) == PN_ERROR) {
                         return PN_ERROR;
                     }
                 }
