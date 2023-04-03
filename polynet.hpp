@@ -297,10 +297,10 @@ namespace pn {
         Socket() = default;
         Socket(sockfd_t fd):
             fd(fd) {}
-        Socket(struct sockaddr addr, socklen_t addrlen):
+        Socket(const struct sockaddr& addr, socklen_t addrlen):
             addr(addr),
             addrlen(addrlen) {}
-        Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+        Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
             fd(fd),
             addr(addr),
             addrlen(addrlen) {}
@@ -771,9 +771,9 @@ namespace pn {
         Server() = default;
         Server(sockfd_t fd):
             Base(fd) {}
-        Server(struct sockaddr addr, socklen_t addrlen):
+        Server(const struct sockaddr& addr, socklen_t addrlen):
             Base(addr, addrlen) {}
-        Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+        Server(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
             Base(fd, addr, addrlen) {}
 
         int bind(const std::string& hostname, const std::string& port) {
@@ -859,9 +859,9 @@ namespace pn {
         Client() = default;
         Client(sockfd_t fd):
             Base(fd) {}
-        Client(struct sockaddr addr, socklen_t addrlen):
+        Client(const struct sockaddr& addr, socklen_t addrlen):
             Base(addr, addrlen) {}
-        Client(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+        Client(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
             Base(fd, addr, addrlen) {}
 
         int connect(const std::string& hostname, const std::string& port) {
@@ -909,7 +909,7 @@ namespace pn {
             return connect(hostname, str_port);
         }
 
-        int connect(struct sockaddr* addr, socklen_t addrlen) {
+        int connect(const struct sockaddr* addr, socklen_t addrlen) {
             if (this->init(addr->sa_family, Socktype, Protocol) == PN_ERROR) {
                 return PN_ERROR;
             }
@@ -933,9 +933,9 @@ namespace pn {
             Connection() = default;
             Connection(sockfd_t fd):
                 Socket(fd) {}
-            Connection(struct sockaddr addr, socklen_t addrlen):
+            Connection(const struct sockaddr& addr, socklen_t addrlen):
                 Socket(addr, addrlen) {}
-            Connection(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+            Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 Socket(fd, addr, addrlen) {}
 
             inline ssize_t send(const void* buf, size_t len, int flags = 0) {
@@ -965,9 +965,9 @@ namespace pn {
             Server() = default;
             Server(sockfd_t fd):
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd) {}
-            Server(struct sockaddr addr, socklen_t addrlen):
+            Server(const struct sockaddr& addr, socklen_t addrlen):
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
-            Server(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+            Server(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
 
             // Return false from the callback to stop listening
@@ -983,9 +983,9 @@ namespace pn {
             Socket() = default;
             Socket(sockfd_t fd):
                 pn::Socket(fd) {}
-            Socket(struct sockaddr addr, socklen_t addrlen):
+            Socket(const struct sockaddr& addr, socklen_t addrlen):
                 pn::Socket(addr, addrlen) {}
-            Socket(sockfd_t fd, struct sockaddr addr, socklen_t addrlen):
+            Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 pn::Socket(fd, addr, addrlen) {}
 
             inline ssize_t sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
