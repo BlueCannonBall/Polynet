@@ -61,19 +61,16 @@ namespace pn {
         std::string specific_error;
 
         switch (error) {
-        case PN_ESOCKET: {
+        case PN_ESOCKET:
             specific_error = socket_strerror();
             break;
-        }
 
-        case PN_EAI: {
+        case PN_EAI:
             specific_error = gai_strerror();
             break;
-        }
 
-        default: {
+        default:
             return base_error;
-        }
         }
 
         return base_error + ": " + specific_error;
@@ -106,6 +103,7 @@ namespace pn {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                     return PN_ERROR;
+
                 case EPERM:
                 case EPROTO:
                 case ECONNABORTED:
