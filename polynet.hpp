@@ -9,6 +9,7 @@
         #define _WIN32_WINNT _WIN32_WINNT_VISTA
     #endif
 
+    #include <basetsd.h>
     #include <winsock2.h>
     #include <ws2tcpip.h>
 
