@@ -771,7 +771,7 @@ namespace pn {
     }
 
     template <class Base, int Socktype, int Protocol>
-    class Server: public Base {
+    class Server : public Base {
     public:
         Server() = default;
         Server(sockfd_t fd):
@@ -859,7 +859,7 @@ namespace pn {
     };
 
     template <class Base, int Socktype, int Protocol>
-    class Client: public Base {
+    class Client : public Base {
     public:
         Client() = default;
         Client(sockfd_t fd):
@@ -933,7 +933,7 @@ namespace pn {
     };
 
     namespace tcp {
-        class Connection: public Socket {
+        class Connection : public Socket {
         public:
             Connection() = default;
             Connection(sockfd_t fd):
@@ -962,7 +962,7 @@ namespace pn {
             }
         };
 
-        class Server: public pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP> {
+        class Server : public pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP> {
         protected:
             int backlog = -1;
 
@@ -983,7 +983,7 @@ namespace pn {
     } // namespace tcp
 
     namespace udp {
-        class Socket: public pn::Socket {
+        class Socket : public pn::Socket {
         public:
             Socket() = default;
             Socket(sockfd_t fd):
