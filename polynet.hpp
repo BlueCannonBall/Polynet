@@ -282,7 +282,7 @@ namespace pn {
 
     inline int inet_ntop(int af, const void* src, std::string& ret) {
         char result[INET6_ADDRSTRLEN];
-        if (::inet_ntop(af, src, result, sizeof(result)) == nullptr) {
+        if (::inet_ntop(af, src, result, sizeof result) == nullptr) {
             detail::set_last_socket_error(detail::get_last_system_error());
             detail::set_last_error(PN_ESOCKET);
             return PN_ERROR;
@@ -294,10 +294,10 @@ namespace pn {
     class Socket {
     public:
         sockfd_t fd = PN_INVALID_SOCKFD;
-        struct sockaddr addr = {0};       // Corresponds to the address to which
-        socklen_t addrlen = sizeof(addr); // the server is bound to for servers,
-                                          // or the server to which the client is
-                                          // connected to for clients
+        struct sockaddr addr = {0};      // Corresponds to the address to which
+        socklen_t addrlen = sizeof addr; // the server is bound to for servers,
+                                         // or the server to which the client is
+                                         // connected to for clients
 
         Socket() = default;
         Socket(sockfd_t fd):
@@ -839,8 +839,8 @@ namespace pn {
             }
 
             {
-                int value = 1;
-                if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, (char*) &value, sizeof(value)) == PN_ERROR) {
+                const int value = 1;
+                if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)) == PN_ERROR) {
                     return PN_ERROR;
                 }
             }

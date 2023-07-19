@@ -36,10 +36,10 @@ namespace pn {
             error,
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
             error_string,
-            sizeof(error_string),
+            sizeof error_string,
             nullptr);
 
-        for (size_t i = 0; i < sizeof(error_string); ++i) {
+        for (size_t i = 0; i < sizeof error_string; ++i) {
             if (error_string[i] == '\n') {
                 if (error_string[i + 1] == '\0') {
                     error_string[i] = '\0';
