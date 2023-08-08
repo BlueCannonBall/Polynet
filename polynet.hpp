@@ -415,7 +415,6 @@ namespace pn {
 
                 if (flags & MSG_WAITALL) {
                     ssize_t result;
-
                     if ((result = conn.recv((char*) buf + this->buf.size(), len - this->buf.size(), flags)) == PN_ERROR) {
                         return PN_ERROR;
                     }
