@@ -39,6 +39,7 @@
 
 // Other includes
 #include <atomic>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -48,6 +49,7 @@
 #include <ostream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #define _POLYNET_COPY_CTOR_TEMPLATE(class_name, type1, type2, arg_name)   \
     class_name(const class_name& arg_name): class_name(arg_name, true) {} \
@@ -381,6 +383,63 @@ namespace pn {
         }
     };
 
+    class BufReceiver {
+    protected:
+        std::vector<char> buf;
+
+    public:
+        size_t size;
+
+        BufReceiver(size_t size = 4'000):
+            size(size) {}
+
+        template <typename T>
+        ssize_t recv(T& conn, void* buf, size_t len, int flags = 0) {
+            if (len > this->buf.size()) {
+                if (!this->buf.empty()) {
+                    memcpy(buf, this->buf.data(), this->buf.size());
+                } else if (len > this->size || (flags & MSG_WAITALL)) {
+                    return conn.recv(buf, len, flags);
+                } else {
+                    ssize_t result;
+                    this->buf.resize(this->size);
+                    if ((result = conn.recv(this->buf.data(), this->size, flags)) == PN_ERROR) {
+                        return PN_ERROR;
+                    }
+                    this->buf.resize(result);
+
+                    memcpy(buf, this->buf.data(), std::min<long long>(len, result));
+                    if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(len, result));
+                    return std::min<long long>(len, result);
+                }
+
+                if (flags & MSG_WAITALL) {
+                    ssize_t result;
+
+                    if ((result = conn.recv((char*) buf + this->buf.size(), len - this->buf.size(), flags)) == PN_ERROR) {
+                        return PN_ERROR;
+                    }
+
+                    result += this->buf.size();
+                    this->buf.clear();
+                    return result;
+                }
+
+                ssize_t ret = this->buf.size();
+                this->buf.clear();
+                return ret;
+            } else if (len < this->buf.size()) {
+                memcpy(buf, this->buf.data(), len);
+                if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + len);
+                return len;
+            } else {
+                memcpy(buf, this->buf.data(), this->buf.size());
+                if (!(flags & MSG_PEEK)) this->buf.clear();
+                return len;
+            }
+        }
+    };
+
     template <typename T>
     class UniqueSock {
     protected:
@@ -399,9 +458,8 @@ namespace pn {
         typedef T sock_type;
 
         UniqueSock() = default;
-        UniqueSock(const T& sock) {
-            this->sock = sock;
-        }
+        UniqueSock(const T& sock):
+            sock(sock) {}
         _POLYNET_MOVE_CTOR_TEMPLATE(UniqueSock, T, U, unique_sock) {
             *this = std::move(unique_sock);
         }
@@ -510,9 +568,8 @@ namespace pn {
         typedef T sock_type;
 
         SharedSock() = default;
-        SharedSock(const T& sock) {
-            this->sock = sock;
-        }
+        SharedSock(const T& sock):
+            sock(sock) {}
         _POLYNET_COPY_CTOR_TEMPLATE(SharedSock, T, U, shared_sock) {
             *this = shared_sock;
         }
