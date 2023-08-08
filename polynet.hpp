@@ -422,11 +422,11 @@ namespace pn {
                     result += this->buf.size();
                     if (!(flags & MSG_PEEK)) this->buf.clear();
                     return result;
+                } else {
+                    ssize_t ret = this->buf.size();
+                    if (!(flags & MSG_PEEK)) this->buf.clear();
+                    return ret;
                 }
-
-                ssize_t ret = this->buf.size();
-                if (!(flags & MSG_PEEK)) this->buf.clear();
-                return ret;
             } else if (len < this->buf.size()) {
                 memcpy(buf, this->buf.data(), len);
                 if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + len);
