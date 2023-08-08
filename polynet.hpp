@@ -420,12 +420,12 @@ namespace pn {
                     }
 
                     result += this->buf.size();
-                    this->buf.clear();
+                    if (!(flags & MSG_PEEK)) this->buf.clear();
                     return result;
                 }
 
                 ssize_t ret = this->buf.size();
-                this->buf.clear();
+                if (!(flags & MSG_PEEK)) this->buf.clear();
                 return ret;
             } else if (len < this->buf.size()) {
                 memcpy(buf, this->buf.data(), len);
