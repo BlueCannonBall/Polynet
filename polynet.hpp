@@ -398,7 +398,7 @@ namespace pn {
             if (len > this->buf.size()) {
                 if (!this->buf.empty()) {
                     memcpy(buf, this->buf.data(), this->buf.size());
-                } else if (len > this->size || (flags & MSG_WAITALL)) {
+                } else if (len > this->size || ((flags & MSG_WAITALL) && len > 1)) {
                     return conn.recv(buf, len, flags);
                 } else {
                     ssize_t result;
