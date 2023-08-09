@@ -13,7 +13,7 @@ if (server.bind("0.0.0.0", 8000) == PN_ERROR) {
     exit(EXIT_FAILURE);
 }
 
-// Accepting connections
+// Accepting connections (this blocks until an error occurs or the callback returns false)
 if (server.listen(/* Accept callback */) == PN_ERROR) {
     std::cerr << "Error: " << pn::universal_strerror() << std::endl;
     exit(EXIT_FAILURE);
