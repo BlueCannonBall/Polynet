@@ -403,7 +403,7 @@ namespace pn {
                 } else {
                     ssize_t result;
                     this->buf.resize(this->size);
-                    if ((result = conn.recv(this->buf.data(), this->size, flags)) == PN_ERROR) {
+                    if ((result = conn.recv(this->buf.data(), this->size, flags & ~MSG_WAITALL)) == PN_ERROR) {
                         return PN_ERROR;
                     }
                     this->buf.resize(result);
