@@ -76,6 +76,50 @@ namespace pn {
         return base_error + ": " + specific_error;
     }
 
+    ssize_t tcp::BufReceiver::recv(pn::tcp::Connection& conn, void* buf, size_t len, int flags) {
+        if (len > this->buf.size()) {
+            if (!this->buf.empty()) {
+                memcpy(buf, this->buf.data(), this->buf.size());
+            } else if (len > this->size || ((flags & MSG_WAITALL) && len > 1)) {
+                return conn.recv(buf, len, flags);
+            } else {
+                ssize_t result;
+                this->buf.resize(this->size);
+                if ((result = conn.recv(this->buf.data(), this->size, flags & ~MSG_WAITALL)) == PN_ERROR) {
+                    return PN_ERROR;
+                }
+                this->buf.resize(result);
+
+                memcpy(buf, this->buf.data(), std::min<long long>(len, result));
+                if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(len, result));
+                return std::min<long long>(len, result);
+            }
+
+            if (flags & MSG_WAITALL) {
+                ssize_t result;
+                if ((result = conn.recv((char*) buf + this->buf.size(), len - this->buf.size(), flags)) == PN_ERROR) {
+                    return PN_ERROR;
+                }
+
+                result += this->buf.size();
+                if (!(flags & MSG_PEEK)) this->buf.clear();
+                return result;
+            } else {
+                ssize_t ret = this->buf.size();
+                if (!(flags & MSG_PEEK)) this->buf.clear();
+                return ret;
+            }
+        } else if (len < this->buf.size()) {
+            memcpy(buf, this->buf.data(), len);
+            if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + len);
+            return len;
+        } else {
+            memcpy(buf, this->buf.data(), this->buf.size());
+            if (!(flags & MSG_PEEK)) this->buf.clear();
+            return len;
+        }
+    }
+
     int tcp::Server::listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data) { // This function BLOCKS
         if (this->backlog != backlog || this->backlog == -1) {
             if (::listen(this->fd, backlog) == PN_ERROR) {

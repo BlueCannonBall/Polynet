@@ -383,62 +383,6 @@ namespace pn {
         }
     };
 
-    class BufReceiver {
-    protected:
-        std::vector<char> buf;
-
-    public:
-        size_t size;
-
-        BufReceiver(size_t size = 4'000):
-            size(size) {}
-
-        template <typename T>
-        ssize_t recv(T& conn, void* buf, size_t len, int flags = 0) {
-            if (len > this->buf.size()) {
-                if (!this->buf.empty()) {
-                    memcpy(buf, this->buf.data(), this->buf.size());
-                } else if (len > this->size || ((flags & MSG_WAITALL) && len > 1)) {
-                    return conn.recv(buf, len, flags);
-                } else {
-                    ssize_t result;
-                    this->buf.resize(this->size);
-                    if ((result = conn.recv(this->buf.data(), this->size, flags & ~MSG_WAITALL)) == PN_ERROR) {
-                        return PN_ERROR;
-                    }
-                    this->buf.resize(result);
-
-                    memcpy(buf, this->buf.data(), std::min<long long>(len, result));
-                    if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(len, result));
-                    return std::min<long long>(len, result);
-                }
-
-                if (flags & MSG_WAITALL) {
-                    ssize_t result;
-                    if ((result = conn.recv((char*) buf + this->buf.size(), len - this->buf.size(), flags)) == PN_ERROR) {
-                        return PN_ERROR;
-                    }
-
-                    result += this->buf.size();
-                    if (!(flags & MSG_PEEK)) this->buf.clear();
-                    return result;
-                } else {
-                    ssize_t ret = this->buf.size();
-                    if (!(flags & MSG_PEEK)) this->buf.clear();
-                    return ret;
-                }
-            } else if (len < this->buf.size()) {
-                memcpy(buf, this->buf.data(), len);
-                if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + len);
-                return len;
-            } else {
-                memcpy(buf, this->buf.data(), this->buf.size());
-                if (!(flags & MSG_PEEK)) this->buf.clear();
-                return len;
-            }
-        }
-    };
-
     template <typename T>
     class UniqueSock {
     protected:
@@ -1016,6 +960,19 @@ namespace pn {
                 }
                 return result;
             }
+        };
+
+        class BufReceiver {
+        protected:
+            std::vector<char> buf;
+
+        public:
+            size_t size;
+
+            BufReceiver(size_t size = 4'000):
+                size(size) {}
+
+            ssize_t recv(pn::tcp::Connection& conn, void* buf, size_t len, int flags = 0);
         };
 
         class Server : public pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP> {
