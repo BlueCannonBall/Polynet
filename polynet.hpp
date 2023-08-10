@@ -39,10 +39,8 @@
 
 // Other includes
 #include <atomic>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -973,6 +971,10 @@ namespace pn {
                 size(size) {}
 
             ssize_t recv(pn::tcp::Connection& conn, void* buf, size_t len, int flags = 0);
+
+            inline void rewind(void* buf, size_t len) {
+                this->buf.insert(this->buf.begin(), (const char*) buf, (const char*) buf + len);
+            }
         };
 
         class Server : public pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP> {

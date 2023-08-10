@@ -1,4 +1,6 @@
 #include "polynet.hpp"
+#include <cmath>
+#include <cstring>
 
 namespace pn {
     namespace detail {
