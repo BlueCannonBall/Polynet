@@ -6,7 +6,7 @@
     #define WIN32_LEAN_AND_MEAN
 
     #ifndef _WIN32_WINNT
-        #define _WIN32_WINNT _WIN32_WINNT_VISTA
+        #define _WIN32_WINNT _WIN32_WINNT_WIN8
     #endif
 
     #include <basetsd.h>
