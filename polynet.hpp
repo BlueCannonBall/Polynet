@@ -972,7 +972,7 @@ namespace pn {
 
             ssize_t recv(pn::tcp::Connection& conn, void* buf, size_t len, int flags = 0);
 
-            inline void rewind(void* buf, size_t len) {
+            inline void rewind(const void* buf, size_t len) {
                 this->buf.insert(this->buf.begin(), (const char*) buf, (const char*) buf + len);
             }
         };
