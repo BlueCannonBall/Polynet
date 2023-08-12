@@ -6,6 +6,8 @@ Polynet is designed to be similar to Berkeley sockets while using C++ features s
 
 ### Quick Examples
 ```cpp
+pn::init();
+
 // Creating a TCP server
 pn::tcp::Server server;
 if (server.bind("0.0.0.0", 8000) == PN_ERROR) {
@@ -25,6 +27,8 @@ if (client.connect("localhost", 8000) == PN_ERROR) {
     std::cerr << "Error: " << pn::universal_strerror() << std::endl;
     exit(EXIT_FAILURE);
 }
+
+pn::quit();
 ```
 See `polynet.h` to check out more ways to use Polynet.
 
