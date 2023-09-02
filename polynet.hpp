@@ -43,7 +43,6 @@
 #include <cstdint>
 #include <functional>
 #include <iostream>
-#include <memory>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -780,22 +779,18 @@ namespace pn {
             Base(fd, addr, addrlen) {}
 
         int bind(const std::string& hostname, const std::string& port) {
-            std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(nullptr, freeaddrinfo);
+            struct addrinfo* ai_list;
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
             hints.ai_protocol = Protocol;
 
-            {
-                struct addrinfo* tmp = nullptr;
-                if (getaddrinfo(hostname, port, &hints, &tmp) == PN_ERROR) {
-                    return PN_ERROR;
-                }
-                ai_list.reset(tmp);
+            if (getaddrinfo(hostname, port, &hints, &ai_list) == PN_ERROR) {
+                return PN_ERROR;
             }
 
             struct addrinfo* ai_it;
-            for (ai_it = ai_list.get(); ai_it != nullptr; ai_it = ai_it->ai_next) {
+            for (ai_it = ai_list; ai_it != nullptr; ai_it = ai_it->ai_next) {
                 if (this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol) == PN_ERROR) {
                     continue;
                 }
@@ -803,6 +798,7 @@ namespace pn {
                 {
                     const int value = 1;
                     if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)) == PN_ERROR) {
+                        pn::freeaddrinfo(ai_list);
                         return PN_ERROR;
                     }
                 }
@@ -812,17 +808,20 @@ namespace pn {
                 }
 
                 if (Base::close(true, false) == PN_ERROR) {
+                    pn::freeaddrinfo(ai_list);
                     return PN_ERROR;
                 }
             }
             if (ai_it == nullptr) {
                 detail::set_last_error(PN_EBADADDRS);
+                pn::freeaddrinfo(ai_list);
                 return PN_ERROR;
             }
 
             this->addr = *ai_it->ai_addr;
             this->addrlen = ai_it->ai_addrlen;
 
+            pn::freeaddrinfo(ai_list);
             return PN_OK;
         }
 
@@ -868,22 +867,18 @@ namespace pn {
             Base(fd, addr, addrlen) {}
 
         int connect(const std::string& hostname, const std::string& port) {
-            std::unique_ptr<struct addrinfo, decltype(&freeaddrinfo)> ai_list(nullptr, freeaddrinfo);
+            struct addrinfo* ai_list;
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
             hints.ai_protocol = Protocol;
 
-            {
-                struct addrinfo* tmp = nullptr;
-                if (getaddrinfo(hostname, port, &hints, &tmp) == PN_ERROR) {
-                    return PN_ERROR;
-                }
-                ai_list.reset(tmp);
+            if (getaddrinfo(hostname, port, &hints, &ai_list) == PN_ERROR) {
+                return PN_ERROR;
             }
 
             struct addrinfo* ai_it;
-            for (ai_it = ai_list.get(); ai_it != nullptr; ai_it = ai_it->ai_next) {
+            for (ai_it = ai_list; ai_it != nullptr; ai_it = ai_it->ai_next) {
                 if (this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol) == PN_ERROR) {
                     continue;
                 }
@@ -893,17 +888,20 @@ namespace pn {
                 }
 
                 if (Base::close(true, false) == PN_ERROR) {
+                    pn::freeaddrinfo(ai_list);
                     return PN_ERROR;
                 }
             }
             if (ai_it == nullptr) {
                 detail::set_last_error(PN_EBADADDRS);
+                pn::freeaddrinfo(ai_list);
                 return PN_ERROR;
             }
 
             this->addr = *ai_it->ai_addr;
             this->addrlen = ai_it->ai_addrlen;
 
+            pn::freeaddrinfo(ai_list);
             return PN_OK;
         }
 
