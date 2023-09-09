@@ -1,6 +1,8 @@
 #include "polynet.hpp"
+#include <cassert>
 #include <cmath>
 #include <cstring>
+#include <type_traits>
 
 namespace pn {
     namespace detail {
@@ -30,34 +32,36 @@ namespace pn {
     }
 
     std::string socket_strerror(int error) {
+        static thread_local char buf[1024];
 #ifdef _WIN32
-        char error_string[512];
-
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr,
             error,
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            error_string,
-            sizeof error_string,
+            buf,
+            1024,
             nullptr);
 
-        for (size_t i = 0; i < sizeof error_string; ++i) {
-            if (error_string[i] == '\n') {
-                if (error_string[i + 1] == '\0') {
-                    error_string[i] = '\0';
+        for (size_t i = 0; i < 1024; ++i) {
+            if (buf[i] == '\n') {
+                if (buf[i + 1] == '\0') {
+                    buf[i] = '\0';
                     break;
                 } else {
-                    error_string[i] = ' ';
+                    buf[i] = ' ';
                 }
             }
         }
 
-        return error_string;
+        return buf;
 #else
-        if (error < sys_nerr) {
-            return sys_errlist[error];
+        if (std::is_same<decltype(strerror_r(0, nullptr, 0)), int>::value) {
+            assert(strerror_r(error, buf, 1024) == PN_OK);
+            return buf;
+        } else if (std::is_same<decltype(strerror_r(0, nullptr, 0)), char*>::value) {
+            return strerror_r(error, buf, 1024);
         } else {
-            return "Unknown error";
+            return ::strerror(error);
         }
 #endif
     }

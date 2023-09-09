@@ -231,6 +231,7 @@ namespace pn {
         return detail::last_socket_error;
     }
 
+    // Invalid error numbers are not tolerated
     std::string socket_strerror(int error = get_last_socket_error());
 
     inline int get_last_gai_error() {
