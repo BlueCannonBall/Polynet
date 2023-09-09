@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
+#include <stdexcept>
 #include <type_traits>
 
 namespace pn {
@@ -55,13 +56,14 @@ namespace pn {
 
         return buf;
 #else
-        if (std::is_same<decltype(strerror_r(0, nullptr, 0)), int>::value) {
-            assert(strerror_r(error, buf, 1024) == PN_OK);
+        auto result = strerror_r(error, buf, 1024);
+        if (std::is_same<decltype(result), int>::value) {
+            assert(result == PN_OK);
             return buf;
-        } else if (std::is_same<decltype(strerror_r(0, nullptr, 0)), char*>::value) {
-            return strerror_r(error, buf, 1024);
+        } else if (std::is_same<decltype(result), char*>::value) {
+            return result;
         } else {
-            return ::strerror(error);
+            throw std::logic_error("Invalid result type");
         }
 #endif
     }
