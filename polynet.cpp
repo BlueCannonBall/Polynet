@@ -3,7 +3,6 @@
 #include <cmath>
 #include <cstring>
 #include <stdexcept>
-#include <type_traits>
 
 namespace pn {
     namespace detail {
@@ -55,16 +54,11 @@ namespace pn {
         }
 
         return buf;
+#elif (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !_GNU_SOURCE
+        assert(strerror_r(error, buf, 1024) == PN_OK);
+        return buf;
 #else
-        auto result = strerror_r(error, buf, 1024);
-        if (std::is_same<decltype(result), int>::value) {
-            assert(result == PN_OK);
-            return buf;
-        } else if (std::is_same<decltype(result), char*>::value) {
-            return result;
-        } else {
-            throw std::logic_error("Invalid result type");
-        }
+        return strerror_r(error, buf, 1024);
 #endif
     }
 
