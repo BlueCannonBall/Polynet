@@ -33,7 +33,7 @@ namespace pn {
     }
 
     std::string socket_strerror(int error) {
-        static thread_local char buf[1024];
+        char buf[1024];
 #ifdef _WIN32
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr,
