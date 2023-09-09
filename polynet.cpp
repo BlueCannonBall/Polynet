@@ -54,7 +54,11 @@ namespace pn {
 
         return error_string;
 #else
-        return ::strerror(error);
+        if (error < sys_nerr) {
+            return sys_errlist[error];
+        } else {
+            return "Unknown error";
+        }
 #endif
     }
 
