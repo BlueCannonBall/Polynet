@@ -38,11 +38,11 @@
 #endif
 
 // Other includes
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -164,8 +164,9 @@ namespace pn {
 
         class ControlBlock {
         public:
-            std::atomic<use_count_t> use_count;
-            std::atomic<use_count_t> weak_use_count;
+            std::mutex mtx;
+            use_count_t use_count;
+            use_count_t weak_use_count;
 
             ControlBlock(use_count_t use_count = 1, use_count_t weak_use_count = 0):
                 use_count(use_count),
@@ -489,10 +490,12 @@ namespace pn {
         detail::ControlBlock* control_block = new detail::ControlBlock;
 
         void increment() {
+            std::lock_guard<std::mutex> lock(control_block->mtx);
             control_block->use_count++;
         }
 
         void decrement() {
+            std::lock_guard<std::mutex> lock(control_block->mtx);
             if (!--control_block->use_count) {
                 this->sock.close(/* Reset fd */ false);
                 if (!control_block->weak_use_count) {
@@ -611,6 +614,7 @@ namespace pn {
         }
 
         inline use_count_t use_count() const {
+            std::lock_guard<std::mutex> lock(control_block->mtx);
             return control_block->use_count;
         }
     };
@@ -632,13 +636,17 @@ namespace pn {
 
         void increment() {
             if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
                 control_block->weak_use_count++;
             }
         }
 
         void decrement() {
-            if (control_block && (!--control_block->weak_use_count) && !control_block->use_count) {
-                delete control_block;
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                if ((!--control_block->weak_use_count) && !control_block->use_count) {
+                    delete control_block;
+                }
             }
         }
 
@@ -737,6 +745,7 @@ namespace pn {
 
         inline use_count_t use_count() const {
             if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
                 return control_block->use_count;
             } else {
                 return 0; // Invalid state
@@ -748,13 +757,16 @@ namespace pn {
         }
 
         inline SharedSock<T> lock() const {
-            if (control_block && control_block->use_count) {
-                SharedSock<T> ret(this->sock, control_block);
-                control_block->use_count++;
-                return ret;
-            } else {
-                return SharedSock<T>();
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mtx);
+                if (control_block->use_count) {
+                    SharedSock<T> ret(this->sock, control_block);
+                    control_block->use_count++;
+                    return ret;
+                }
             }
+
+            return SharedSock<T>();
         }
     };
 
