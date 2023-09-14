@@ -495,10 +495,11 @@ namespace pn {
         }
 
         void decrement() {
-            std::lock_guard<std::mutex> lock(control_block->mtx);
+            std::unique_lock<std::mutex> lock(control_block->mtx);
             if (!--control_block->use_count) {
                 this->sock.close(/* Reset fd */ false);
                 if (!control_block->weak_use_count) {
+                    lock.unlock();
                     delete control_block;
                 }
             }
@@ -643,8 +644,9 @@ namespace pn {
 
         void decrement() {
             if (control_block) {
-                std::lock_guard<std::mutex> lock(control_block->mtx);
+                std::unique_lock<std::mutex> lock(control_block->mtx);
                 if ((!--control_block->weak_use_count) && !control_block->use_count) {
+                    lock.unlock();
                     delete control_block;
                 }
             }
