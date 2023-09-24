@@ -54,11 +54,15 @@ namespace pn {
         }
 
         return buf;
-#elif defined(_GNU_SOURCE) || (_POSIX_C_SOURCE < 200112L && _XOPEN_SOURCE < 600)
-        return strerror_r(error, buf, 1024);
 #else
+    #if defined(_GNU_SOURCE)
+        return strerror_r(error, buf, 1024);
+    #elif (!defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE >= 200112L) || (!defined(_XOPEN_SOURCE) && _XOPEN_SOURCE >= 600)
         assert(strerror_r(error, buf, 1024) == PN_OK);
         return buf;
+    #else
+        #error No suitable variant of strerror_r is available
+    #endif
 #endif
     }
 
