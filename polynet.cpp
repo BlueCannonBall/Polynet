@@ -54,7 +54,7 @@ namespace pn {
         }
 
         return buf;
-#elif defined(_GNU_SOURCE) && (_POSIX_C_SOURCE < 200112L && _XOPEN_SOURCE < 600)
+#elif defined(_GNU_SOURCE) || (_POSIX_C_SOURCE < 200112L && _XOPEN_SOURCE < 600)
         return strerror_r(error, buf, 1024);
 #else
         assert(strerror_r(error, buf, 1024) == PN_OK);
