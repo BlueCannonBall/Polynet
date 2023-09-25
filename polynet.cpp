@@ -33,7 +33,7 @@ namespace pn {
 
     std::string socket_strerror(int error) {
         char buf[1024];
-#ifdef _WIN32
+#if defined(_WIN32)
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr,
             error,
@@ -54,7 +54,7 @@ namespace pn {
         }
 
         return buf;
-#elif defined(_GNU_SOURCE) || ((!defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200112L) && (!defined(_XOPEN_SOURCE) || _XOPEN_SOURCE < 600))
+#elif defined(_GNU_SOURCE)
         return strerror_r(error, buf, 1024);
 #else
         assert(strerror_r(error, buf, 1024) == PN_OK);
