@@ -82,12 +82,12 @@ namespace pn {
         return base_error + ": " + specific_error;
     }
 
-    ssize_t tcp::BufReceiver::recv(pn::tcp::Connection& conn, void* buf, size_t len, int flags) {
-        if (len > this->buf.size()) {
+    ssize_t tcp::BufReceiver::recv(pn::tcp::Connection& conn, void* buf, size_t size, int flags) {
+        if (size > this->buf.size()) {
             if (!this->buf.empty()) {
                 memcpy(buf, this->buf.data(), this->buf.size());
-            } else if (len > this->size || ((flags & MSG_WAITALL) && len > 1)) {
-                return conn.recv(buf, len, flags);
+            } else if (size > this->size || ((flags & MSG_WAITALL) && size > 1)) {
+                return conn.recv(buf, size, flags);
             } else {
                 ssize_t result;
                 this->buf.resize(this->size);
@@ -96,14 +96,14 @@ namespace pn {
                 }
                 this->buf.resize(result);
 
-                memcpy(buf, this->buf.data(), std::min<long long>(len, result));
-                if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(len, result));
-                return std::min<long long>(len, result);
+                memcpy(buf, this->buf.data(), std::min<long long>(size, result));
+                if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(size, result));
+                return std::min<long long>(size, result);
             }
 
             if (flags & MSG_WAITALL) {
                 ssize_t result;
-                if ((result = conn.recv((char*) buf + this->buf.size(), len - this->buf.size(), flags)) == PN_ERROR) {
+                if ((result = conn.recv((char*) buf + this->buf.size(), size - this->buf.size(), flags)) == PN_ERROR) {
                     return PN_ERROR;
                 }
 
@@ -115,14 +115,14 @@ namespace pn {
                 if (!(flags & MSG_PEEK)) this->buf.clear();
                 return ret;
             }
-        } else if (len < this->buf.size()) {
-            memcpy(buf, this->buf.data(), len);
-            if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + len);
-            return len;
+        } else if (size < this->buf.size()) {
+            memcpy(buf, this->buf.data(), size);
+            if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + size);
+            return size;
         } else {
             memcpy(buf, this->buf.data(), this->buf.size());
             if (!(flags & MSG_PEEK)) this->buf.clear();
-            return len;
+            return size;
         }
     }
 

@@ -164,7 +164,7 @@ namespace pn {
 
         class ControlBlock {
         public:
-            std::mutex mtx;
+            std::mutex mutex;
             use_count_t use_count;
             use_count_t weak_use_count;
 
@@ -490,12 +490,12 @@ namespace pn {
         detail::ControlBlock* control_block = new detail::ControlBlock;
 
         void increment() {
-            std::lock_guard<std::mutex> lock(control_block->mtx);
+            std::lock_guard<std::mutex> lock(control_block->mutex);
             control_block->use_count++;
         }
 
         void decrement() {
-            std::unique_lock<std::mutex> lock(control_block->mtx);
+            std::unique_lock<std::mutex> lock(control_block->mutex);
             if (!--control_block->use_count) {
                 this->sock.close(/* Reset fd */ false);
                 if (!control_block->weak_use_count) {
@@ -615,7 +615,7 @@ namespace pn {
         }
 
         inline use_count_t use_count() const {
-            std::lock_guard<std::mutex> lock(control_block->mtx);
+            std::lock_guard<std::mutex> lock(control_block->mutex);
             return control_block->use_count;
         }
     };
@@ -637,14 +637,14 @@ namespace pn {
 
         void increment() {
             if (control_block) {
-                std::lock_guard<std::mutex> lock(control_block->mtx);
+                std::lock_guard<std::mutex> lock(control_block->mutex);
                 control_block->weak_use_count++;
             }
         }
 
         void decrement() {
             if (control_block) {
-                std::unique_lock<std::mutex> lock(control_block->mtx);
+                std::unique_lock<std::mutex> lock(control_block->mutex);
                 if ((!--control_block->weak_use_count) && !control_block->use_count) {
                     lock.unlock();
                     delete control_block;
@@ -747,7 +747,7 @@ namespace pn {
 
         inline use_count_t use_count() const {
             if (control_block) {
-                std::lock_guard<std::mutex> lock(control_block->mtx);
+                std::lock_guard<std::mutex> lock(control_block->mutex);
                 return control_block->use_count;
             } else {
                 return 0; // Invalid state
@@ -760,7 +760,7 @@ namespace pn {
 
         inline SharedSock<T> lock() const {
             if (control_block) {
-                std::lock_guard<std::mutex> lock(control_block->mtx);
+                std::lock_guard<std::mutex> lock(control_block->mutex);
                 if (control_block->use_count) {
                     SharedSock<T> ret(this->sock, control_block);
                     control_block->use_count++;
@@ -954,18 +954,18 @@ namespace pn {
             Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 Socket(fd, addr, addrlen) {}
 
-            inline ssize_t send(const void* buf, size_t len, int flags = 0) {
+            inline ssize_t send(const void* buf, size_t size, int flags = 0) {
                 ssize_t result;
-                if ((result = ::send(this->fd, (const char*) buf, len, flags)) == PN_ERROR) {
+                if ((result = ::send(this->fd, (const char*) buf, size, flags)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
                 return result;
             }
 
-            inline ssize_t recv(void* buf, size_t len, int flags = 0) {
+            inline ssize_t recv(void* buf, size_t size, int flags = 0) {
                 ssize_t result;
-                if ((result = ::recv(this->fd, (char*) buf, len, flags)) == PN_ERROR) {
+                if ((result = ::recv(this->fd, (char*) buf, size, flags)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
@@ -983,10 +983,10 @@ namespace pn {
             BufReceiver(size_t size = 4'000):
                 size(size) {}
 
-            ssize_t recv(pn::tcp::Connection& conn, void* buf, size_t len, int flags = 0);
+            ssize_t recv(pn::tcp::Connection& conn, void* buf, size_t size, int flags = 0);
 
-            inline void rewind(const void* buf, size_t len) {
-                this->buf.insert(this->buf.begin(), (const char*) buf, (const char*) buf + len);
+            inline void rewind(const void* buf, size_t size) {
+                this->buf.insert(this->buf.begin(), (const char*) buf, (const char*) buf + size);
             }
         };
 
@@ -1021,18 +1021,18 @@ namespace pn {
             Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 pn::Socket(fd, addr, addrlen) {}
 
-            inline ssize_t sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
+            inline ssize_t sendto(const void* buf, size_t size, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 ssize_t result;
-                if ((result = ::sendto(this->fd, (const char*) buf, len, flags, dest_addr, addrlen)) == PN_ERROR) {
+                if ((result = ::sendto(this->fd, (const char*) buf, size, flags, dest_addr, addrlen)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
                 return result;
             }
 
-            inline ssize_t recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
+            inline ssize_t recvfrom(void* buf, size_t size, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
                 ssize_t result;
-                if ((result = ::recvfrom(this->fd, (char*) buf, len, flags, src_addr, addrlen)) == PN_ERROR) {
+                if ((result = ::recvfrom(this->fd, (char*) buf, size, flags, src_addr, addrlen)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
