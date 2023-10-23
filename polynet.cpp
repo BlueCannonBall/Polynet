@@ -1,8 +1,7 @@
 #include "polynet.hpp"
+#include <algorithm>
 #include <cassert>
-#include <cmath>
 #include <cstring>
-#include <stdexcept>
 
 namespace pn {
     namespace detail {
