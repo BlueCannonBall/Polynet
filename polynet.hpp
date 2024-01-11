@@ -45,29 +45,7 @@
 #include <iostream>
 #include <ostream>
 #include <string>
-#include <utility>
 #include <vector>
-
-#define _POLYNET_COPY_CTOR_TEMPLATE(class_name, type1, type2, arg_name)   \
-    class_name(const class_name& arg_name): class_name(arg_name, true) {} \
-    template <typename type2>                                             \
-    class_name(const class_name<type2>& arg_name, bool _same_type = false)
-#define _POLYNET_MOVE_CTOR_TEMPLATE(class_name, type1, type2, arg_name)         \
-    class_name(class_name&& arg_name): class_name(std::move(arg_name), true) {} \
-    template <typename type2>                                                   \
-    class_name(class_name<type2>&& arg_name, bool _same_type = false)
-#define _POLYNET_COPY_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name) \
-    inline class_name& operator=(const class_name& arg_name) {            \
-        return class_name::operator= <type1>(arg_name);                   \
-    }                                                                     \
-    template <typename type2>                                             \
-    class_name& operator=(const class_name<type2>& arg_name)
-#define _POLYNET_MOVE_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name) \
-    inline class_name& operator=(class_name&& arg_name) {                 \
-        return class_name::operator= <type1>(std::move(arg_name));        \
-    }                                                                     \
-    template <typename type2>                                             \
-    class_name& operator=(class_name<type2>&& arg_name)
 
 // Bridged
 #ifdef _WIN32
