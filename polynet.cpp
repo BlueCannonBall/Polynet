@@ -82,11 +82,11 @@ namespace pn {
     }
 
     namespace tcp {
-        ssize_t Connection::sendall(const void* buf, size_t size) {
+        ssize_t Connection::sendall(const void* buf, size_t len) {
             size_t sent = 0;
-            while (sent < size) {
+            while (sent < len) {
                 ssize_t result;
-                if ((result = ::send(this->fd, ((const char*) buf) + sent, size - sent, 0)) == PN_ERROR) {
+                if ((result = ::send(this->fd, ((const char*) buf) + sent, len - sent, 0)) == PN_ERROR) {
                     int system_error = detail::get_last_system_error();
 #ifndef _WIN32
                     if (system_error == EINTR) continue;
@@ -105,7 +105,7 @@ namespace pn {
             return sent;
         }
 
-        ssize_t Connection::recvall(void* buf, size_t size) {
+        ssize_t Connection::recvall(void* buf, size_t len) {
 #if defined(_WIN32) && _WIN32_WINNT >= _WIN32_WINNT_VISTA
             ssize_t result;
             if ((result = ::recv(this->fd, (char*) buf, size, MSG_WAITALL)) == PN_ERROR) {
@@ -115,9 +115,9 @@ namespace pn {
             return result;
 #else
             size_t received = 0;
-            while (received < size) {
+            while (received < len) {
                 ssize_t result;
-                if ((result = ::recv(this->fd, ((char*) buf) + received, size - received, 0)) == PN_ERROR) {
+                if ((result = ::recv(this->fd, ((char*) buf) + received, len - received, 0)) == PN_ERROR) {
                     int system_error = detail::get_last_system_error();
     #ifndef _WIN32
                     if (system_error == EINTR) continue;
@@ -137,18 +137,18 @@ namespace pn {
 #endif
         }
 
-        ssize_t BufReceiver::recv(pn::tcp::Connection& conn, void* buf, size_t size) {
+        ssize_t BufReceiver::recv(Connection& conn, void* buf, size_t len) {
             if (!this->size) {
-                return conn.recvall(buf, size);
+                return conn.recvall(buf, len);
             }
 
-            if (size > this->buf.size()) {
+            if (len > this->buf.size()) {
                 if (!this->buf.empty()) {
                     memcpy(buf, this->buf.data(), this->buf.size());
                     this->buf.clear();
                     return this->buf.size();
-                } else if (size > this->size) {
-                    return conn.recv(buf, size);
+                } else if (len > this->size) {
+                    return conn.recv(buf, len);
                 } else {
                     ssize_t result;
                     this->buf.resize(this->size);
@@ -157,32 +157,32 @@ namespace pn {
                     }
                     this->buf.resize(result);
 
-                    memcpy(buf, this->buf.data(), std::min<long long>(size, result));
-                    this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(size, result));
-                    return std::min<long long>(size, result);
+                    memcpy(buf, this->buf.data(), std::min<long long>(len, result));
+                    this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(len, result));
+                    return std::min<long long>(len, result);
                 }
-            } else if (size < this->buf.size()) {
-                memcpy(buf, this->buf.data(), size);
-                this->buf.erase(this->buf.begin(), this->buf.begin() + size);
-                return size;
+            } else if (len < this->buf.size()) {
+                memcpy(buf, this->buf.data(), len);
+                this->buf.erase(this->buf.begin(), this->buf.begin() + len);
+                return len;
             } else {
                 memcpy(buf, this->buf.data(), this->buf.size());
                 this->buf.clear();
-                return size;
+                return len;
             }
         }
 
-        ssize_t BufReceiver::peek(pn::tcp::Connection& conn, void* buf, size_t size) {
+        ssize_t BufReceiver::peek(Connection& conn, void* buf, size_t len) {
             if (!this->size) {
-                return conn.peek(buf, size);
+                return conn.peek(buf, len);
             }
 
-            if (size > this->buf.size()) {
+            if (len > this->buf.size()) {
                 if (!this->buf.empty()) {
                     memcpy(buf, this->buf.data(), this->buf.size());
                     return this->buf.size();
-                } else if (size > this->size) {
-                    return conn.peek(buf, size);
+                } else if (len > this->size) {
+                    return conn.peek(buf, len);
                 } else {
                     ssize_t result;
                     this->buf.resize(this->size);
@@ -191,28 +191,28 @@ namespace pn {
                     }
                     this->buf.resize(result);
 
-                    memcpy(buf, this->buf.data(), std::min<long long>(size, result));
-                    return std::min<long long>(size, result);
+                    memcpy(buf, this->buf.data(), std::min<long long>(len, result));
+                    return std::min<long long>(len, result);
                 }
-            } else if (size < this->buf.size()) {
-                memcpy(buf, this->buf.data(), size);
-                return size;
+            } else if (len < this->buf.size()) {
+                memcpy(buf, this->buf.data(), len);
+                return len;
             } else {
                 memcpy(buf, this->buf.data(), this->buf.size());
-                return size;
+                return len;
             }
         }
 
-        ssize_t BufReceiver::recvall(pn::tcp::Connection& conn, void* buf, size_t size) {
+        ssize_t BufReceiver::recvall(Connection& conn, void* buf, size_t len) {
             if (!this->size) {
-                return conn.recvall(buf, size);
+                return conn.recvall(buf, len);
             }
 
-            if (size > this->buf.size()) {
+            if (len > this->buf.size()) {
                 if (!this->buf.empty()) {
                     memcpy(buf, this->buf.data(), this->buf.size());
-                } else if (size > 1) {
-                    return conn.recvall(buf, size);
+                } else if (len > 1) {
+                    return conn.recvall(buf, len);
                 } else {
                     ssize_t result;
                     this->buf.resize(this->size);
@@ -221,27 +221,27 @@ namespace pn {
                     }
                     this->buf.resize(result);
 
-                    memcpy(buf, this->buf.data(), std::min<long long>(size, result));
-                    this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(size, result));
-                    return std::min<long long>(size, result);
+                    memcpy(buf, this->buf.data(), std::min<long long>(len, result));
+                    this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(len, result));
+                    return std::min<long long>(len, result);
                 }
 
                 ssize_t result;
-                if ((result = conn.recvall((char*) buf + this->buf.size(), size - this->buf.size())) == PN_ERROR) {
+                if ((result = conn.recvall((char*) buf + this->buf.size(), len - this->buf.size())) == PN_ERROR) {
                     return PN_ERROR;
                 }
 
                 result += this->buf.size();
                 this->buf.clear();
                 return result;
-            } else if (size < this->buf.size()) {
-                memcpy(buf, this->buf.data(), size);
-                this->buf.erase(this->buf.begin(), this->buf.begin() + size);
-                return size;
+            } else if (len < this->buf.size()) {
+                memcpy(buf, this->buf.data(), len);
+                this->buf.erase(this->buf.begin(), this->buf.begin() + len);
+                return len;
             } else {
                 memcpy(buf, this->buf.data(), this->buf.size());
                 this->buf.clear();
-                return size;
+                return len;
             }
         }
 

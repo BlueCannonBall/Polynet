@@ -41,6 +41,7 @@
 // Other includes
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <ostream>
@@ -232,6 +233,20 @@ namespace pn {
 
     inline void freeaddrinfo(struct addrinfo* ai) {
         ::freeaddrinfo(ai);
+    }
+
+    inline int getnameinfo(const struct sockaddr* sockaddr, socklen_t addrlen, std::string& hostname, std::string& port, int flags) {
+        int result;
+        hostname.resize(NI_MAXHOST);
+        port.resize(NI_MAXSERV);
+        if ((result = ::getnameinfo(sockaddr, addrlen, &hostname[0], 1025, &port[0], 32, flags)) != PN_OK) {
+            detail::set_last_gai_error(result);
+            detail::set_last_error(PN_EAI);
+            return PN_ERROR;
+        }
+        hostname.resize(strlen(hostname.c_str()));
+        port.resize(strlen(port.c_str()));
+        return result;
     }
 
     inline int inet_pton(int af, const std::string& src, void* ret) {
@@ -520,36 +535,36 @@ namespace pn {
             Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 Socket(fd, addr, addrlen) {}
 
-            inline ssize_t send(const void* buf, size_t size) {
+            inline ssize_t send(const void* buf, size_t len) {
                 ssize_t result;
-                if ((result = ::send(this->fd, (const char*) buf, size, 0)) == PN_ERROR) {
+                if ((result = ::send(this->fd, (const char*) buf, len, 0)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
                 return result;
             }
 
-            ssize_t sendall(const void* buf, size_t size);
+            ssize_t sendall(const void* buf, size_t len);
 
-            inline ssize_t recv(void* buf, size_t size) {
+            inline ssize_t recv(void* buf, size_t len) {
                 ssize_t result;
-                if ((result = ::recv(this->fd, (char*) buf, size, 0)) == PN_ERROR) {
+                if ((result = ::recv(this->fd, (char*) buf, len, 0)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
                 return result;
             }
 
-            inline ssize_t peek(void* buf, size_t size) {
+            inline ssize_t peek(void* buf, size_t len) {
                 ssize_t result;
-                if ((result = ::recv(this->fd, (char*) buf, size, MSG_PEEK)) == PN_ERROR) {
+                if ((result = ::recv(this->fd, (char*) buf, len, MSG_PEEK)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
                 return result;
             }
 
-            ssize_t recvall(void* buf, size_t size);
+            ssize_t recvall(void* buf, size_t len);
         };
 
         class BufReceiver {
@@ -562,27 +577,27 @@ namespace pn {
             BufReceiver(size_t size = 4'000):
                 size(size) {}
 
-            ssize_t recv(pn::tcp::Connection& conn, void* buf, size_t size);
-            ssize_t peek(pn::tcp::Connection& conn, void* buf, size_t size);
-            ssize_t recvall(pn::tcp::Connection& conn, void* buf, size_t size);
+            ssize_t recv(Connection& conn, void* buf, size_t len);
+            ssize_t peek(Connection& conn, void* buf, size_t len);
+            ssize_t recvall(Connection& conn, void* buf, size_t len);
 
-            inline void rewind(const void* buf, size_t size) {
-                this->buf.insert(this->buf.begin(), (const char*) buf, (const char*) buf + size);
+            inline void rewind(const void* buf, size_t len) {
+                this->buf.insert(this->buf.begin(), (const char*) buf, (const char*) buf + len);
             }
         };
 
-        class Server : public pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP> {
+        class Server : public pn::Server<Socket, SOCK_STREAM, IPPROTO_TCP> {
         protected:
             int backlog = -1;
 
         public:
             Server() = default;
             Server(sockfd_t fd):
-                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd) {}
+                pn::Server<Socket, SOCK_STREAM, IPPROTO_TCP>(fd) {}
             Server(const struct sockaddr& addr, socklen_t addrlen):
-                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
+                pn::Server<Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
             Server(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
-                pn::Server<pn::Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
+                pn::Server<Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
 
             // Return false from the callback to stop listening
             int listen(const std::function<bool(Connection&, void*)>& cb, int backlog = 128, void* data = nullptr);
@@ -602,18 +617,18 @@ namespace pn {
             Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 pn::Socket(fd, addr, addrlen) {}
 
-            inline ssize_t sendto(const void* buf, size_t size, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
+            inline ssize_t sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 ssize_t result;
-                if ((result = ::sendto(this->fd, (const char*) buf, size, flags, dest_addr, addrlen)) == PN_ERROR) {
+                if ((result = ::sendto(this->fd, (const char*) buf, len, flags, dest_addr, addrlen)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
                 return result;
             }
 
-            inline ssize_t recvfrom(void* buf, size_t size, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
+            inline ssize_t recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
                 ssize_t result;
-                if ((result = ::recvfrom(this->fd, (char*) buf, size, flags, src_addr, addrlen)) == PN_ERROR) {
+                if ((result = ::recvfrom(this->fd, (char*) buf, len, flags, src_addr, addrlen)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
