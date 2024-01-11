@@ -542,23 +542,36 @@ namespace pn {
             Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 Socket(fd, addr, addrlen) {}
 
-            inline ssize_t send(const void* buf, size_t size, int flags = 0) {
+            inline ssize_t send(const void* buf, size_t size) {
                 ssize_t result;
-                if ((result = ::send(this->fd, (const char*) buf, size, flags)) == PN_ERROR) {
+                if ((result = ::send(this->fd, (const char*) buf, size, 0)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
                 return result;
             }
 
-            inline ssize_t recv(void* buf, size_t size, int flags = 0) {
+            ssize_t sendall(const void* buf, size_t size);
+
+            inline ssize_t recv(void* buf, size_t size) {
                 ssize_t result;
-                if ((result = ::recv(this->fd, (char*) buf, size, flags)) == PN_ERROR) {
+                if ((result = ::recv(this->fd, (char*) buf, size, 0)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                 }
                 return result;
             }
+
+            inline ssize_t peek(void* buf, size_t size) {
+                ssize_t result;
+                if ((result = ::recv(this->fd, (char*) buf, size, MSG_PEEK)) == PN_ERROR) {
+                    detail::set_last_socket_error(detail::get_last_system_error());
+                    detail::set_last_error(PN_ESOCKET);
+                }
+                return result;
+            }
+
+            ssize_t recvall(void* buf, size_t size);
         };
 
         class BufReceiver {
@@ -571,7 +584,9 @@ namespace pn {
             BufReceiver(size_t size = 4'000):
                 size(size) {}
 
-            ssize_t recv(pn::tcp::Connection& conn, void* buf, size_t size, int flags = 0);
+            ssize_t recv(pn::tcp::Connection& conn, void* buf, size_t size);
+            ssize_t peek(pn::tcp::Connection& conn, void* buf, size_t size);
+            ssize_t recvall(pn::tcp::Connection& conn, void* buf, size_t size);
 
             inline void rewind(const void* buf, size_t size) {
                 this->buf.insert(this->buf.begin(), (const char*) buf, (const char*) buf + size);

@@ -81,91 +81,212 @@ namespace pn {
         return base_error + ": " + specific_error;
     }
 
-    ssize_t tcp::BufReceiver::recv(pn::tcp::Connection& conn, void* buf, size_t size, int flags) {
-        if (size > this->buf.size()) {
-            if (!this->buf.empty()) {
-                memcpy(buf, this->buf.data(), this->buf.size());
-            } else if (size > this->size || ((flags & MSG_WAITALL) && size > 1)) {
-                return conn.recv(buf, size, flags);
-            } else {
+    namespace tcp {
+        ssize_t Connection::sendall(const void* buf, size_t size) {
+            size_t sent = 0;
+            while (sent < size) {
                 ssize_t result;
-                this->buf.resize(this->size);
-                if ((result = conn.recv(this->buf.data(), this->size, flags & ~MSG_WAITALL)) == PN_ERROR) {
-                    return PN_ERROR;
-                }
-                this->buf.resize(result);
+                if ((result = ::send(this->fd, ((const char*) buf) + sent, size - sent, 0)) == PN_ERROR) {
+                    int system_error = detail::get_last_system_error();
+#ifndef _WIN32
+                    if (system_error == EINTR) continue;
+#endif
+                    detail::set_last_socket_error(system_error);
+                    detail::set_last_error(PN_ESOCKET);
 
-                memcpy(buf, this->buf.data(), std::min<long long>(size, result));
-                if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(size, result));
-                return std::min<long long>(size, result);
+                    if (sent) {
+                        break;
+                    } else {
+                        return PN_ERROR;
+                    }
+                }
+                sent += result;
+            }
+            return sent;
+        }
+
+        ssize_t Connection::recvall(void* buf, size_t size) {
+#if defined(_WIN32) && _WIN32_WINNT >= _WIN32_WINNT_VISTA
+            ssize_t result;
+            if ((result = ::recv(this->fd, (char*) buf, size, MSG_WAITALL)) == PN_ERROR) {
+                detail::set_last_socket_error(detail::get_last_system_error());
+                detail::set_last_error(PN_ESOCKET);
+            }
+            return result;
+#else
+            size_t received = 0;
+            while (received < size) {
+                ssize_t result;
+                if ((result = ::recv(this->fd, ((char*) buf) + received, size - received, 0)) == PN_ERROR) {
+                    int system_error = detail::get_last_system_error();
+    #ifndef _WIN32
+                    if (system_error == EINTR) continue;
+    #endif
+                    detail::set_last_socket_error(system_error);
+                    detail::set_last_error(PN_ESOCKET);
+
+                    if (received) {
+                        break;
+                    } else {
+                        return PN_ERROR;
+                    }
+                }
+                received += result;
+            }
+            return received;
+#endif
+        }
+
+        ssize_t BufReceiver::recv(pn::tcp::Connection& conn, void* buf, size_t size) {
+            if (!this->size) {
+                return conn.recvall(buf, size);
             }
 
-            if (flags & MSG_WAITALL) {
+            if (size > this->buf.size()) {
+                if (!this->buf.empty()) {
+                    memcpy(buf, this->buf.data(), this->buf.size());
+                    this->buf.clear();
+                    return this->buf.size();
+                } else if (size > this->size) {
+                    return conn.recv(buf, size);
+                } else {
+                    ssize_t result;
+                    this->buf.resize(this->size);
+                    if ((result = conn.recv(this->buf.data(), this->size)) == PN_ERROR) {
+                        return PN_ERROR;
+                    }
+                    this->buf.resize(result);
+
+                    memcpy(buf, this->buf.data(), std::min<long long>(size, result));
+                    this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(size, result));
+                    return std::min<long long>(size, result);
+                }
+            } else if (size < this->buf.size()) {
+                memcpy(buf, this->buf.data(), size);
+                this->buf.erase(this->buf.begin(), this->buf.begin() + size);
+                return size;
+            } else {
+                memcpy(buf, this->buf.data(), this->buf.size());
+                this->buf.clear();
+                return size;
+            }
+        }
+
+        ssize_t BufReceiver::peek(pn::tcp::Connection& conn, void* buf, size_t size) {
+            if (!this->size) {
+                return conn.peek(buf, size);
+            }
+
+            if (size > this->buf.size()) {
+                if (!this->buf.empty()) {
+                    memcpy(buf, this->buf.data(), this->buf.size());
+                    return this->buf.size();
+                } else if (size > this->size) {
+                    return conn.peek(buf, size);
+                } else {
+                    ssize_t result;
+                    this->buf.resize(this->size);
+                    if ((result = conn.peek(this->buf.data(), this->size)) == PN_ERROR) {
+                        return PN_ERROR;
+                    }
+                    this->buf.resize(result);
+
+                    memcpy(buf, this->buf.data(), std::min<long long>(size, result));
+                    return std::min<long long>(size, result);
+                }
+            } else if (size < this->buf.size()) {
+                memcpy(buf, this->buf.data(), size);
+                return size;
+            } else {
+                memcpy(buf, this->buf.data(), this->buf.size());
+                return size;
+            }
+        }
+
+        ssize_t BufReceiver::recvall(pn::tcp::Connection& conn, void* buf, size_t size) {
+            if (!this->size) {
+                return conn.recvall(buf, size);
+            }
+
+            if (size > this->buf.size()) {
+                if (!this->buf.empty()) {
+                    memcpy(buf, this->buf.data(), this->buf.size());
+                } else if (size > 1) {
+                    return conn.recvall(buf, size);
+                } else {
+                    ssize_t result;
+                    this->buf.resize(this->size);
+                    if ((result = conn.recv(this->buf.data(), this->size)) == PN_ERROR) {
+                        return PN_ERROR;
+                    }
+                    this->buf.resize(result);
+
+                    memcpy(buf, this->buf.data(), std::min<long long>(size, result));
+                    this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(size, result));
+                    return std::min<long long>(size, result);
+                }
+
                 ssize_t result;
-                if ((result = conn.recv((char*) buf + this->buf.size(), size - this->buf.size(), flags)) == PN_ERROR) {
+                if ((result = conn.recvall((char*) buf + this->buf.size(), size - this->buf.size())) == PN_ERROR) {
                     return PN_ERROR;
                 }
 
                 result += this->buf.size();
-                if (!(flags & MSG_PEEK)) this->buf.clear();
+                this->buf.clear();
                 return result;
+            } else if (size < this->buf.size()) {
+                memcpy(buf, this->buf.data(), size);
+                this->buf.erase(this->buf.begin(), this->buf.begin() + size);
+                return size;
             } else {
-                ssize_t ret = this->buf.size();
-                if (!(flags & MSG_PEEK)) this->buf.clear();
-                return ret;
+                memcpy(buf, this->buf.data(), this->buf.size());
+                this->buf.clear();
+                return size;
             }
-        } else if (size < this->buf.size()) {
-            memcpy(buf, this->buf.data(), size);
-            if (!(flags & MSG_PEEK)) this->buf.erase(this->buf.begin(), this->buf.begin() + size);
-            return size;
-        } else {
-            memcpy(buf, this->buf.data(), this->buf.size());
-            if (!(flags & MSG_PEEK)) this->buf.clear();
-            return size;
-        }
-    }
-
-    int tcp::Server::listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data) { // This function BLOCKS
-        if (this->backlog != backlog || this->backlog == -1) {
-            if (::listen(this->fd, backlog) == PN_ERROR) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-                return PN_ERROR;
-            }
-            this->backlog = backlog;
         }
 
-        for (;;) {
-            Connection conn;
-            if ((conn.fd = accept(this->fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
+        int Server::listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data) { // This function BLOCKS
+            if (this->backlog != backlog || this->backlog == -1) {
+                if (::listen(this->fd, backlog) == PN_ERROR) {
+                    detail::set_last_socket_error(detail::get_last_system_error());
+                    detail::set_last_error(PN_ESOCKET);
+                    return PN_ERROR;
+                }
+                this->backlog = backlog;
+            }
+
+            for (;;) {
+                Connection conn;
+                if ((conn.fd = accept(this->fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
 #ifdef _WIN32
-                if (detail::get_last_system_error() != WSAECONNRESET) {
-                    detail::set_last_socket_error(detail::get_last_system_error());
-                    detail::set_last_error(PN_ESOCKET);
-                    return PN_ERROR;
-                } else {
-                    continue;
-                }
+                    if (detail::get_last_system_error() != WSAECONNRESET) {
+                        detail::set_last_socket_error(detail::get_last_system_error());
+                        detail::set_last_error(PN_ESOCKET);
+                        return PN_ERROR;
+                    } else {
+                        continue;
+                    }
 #else
-                switch (detail::get_last_system_error()) {
-                default:
-                    detail::set_last_socket_error(detail::get_last_system_error());
-                    detail::set_last_error(PN_ESOCKET);
-                    return PN_ERROR;
+                    switch (detail::get_last_system_error()) {
+                    default:
+                        detail::set_last_socket_error(detail::get_last_system_error());
+                        detail::set_last_error(PN_ESOCKET);
+                        return PN_ERROR;
 
-                case EPERM:
-                case EPROTO:
-                case ECONNABORTED:
-                    continue;
-                }
+                    case EPERM:
+                    case EPROTO:
+                    case ECONNABORTED:
+                        continue;
+                    }
 #endif
+                }
+
+                if (!cb(conn, data)) { // Connections CANNOT be accepted while the callback is blocking
+                    break;
+                }
             }
 
-            if (!cb(conn, data)) { // Connections CANNOT be accepted while the callback is blocking
-                break;
-            }
+            return PN_OK;
         }
-
-        return PN_OK;
-    }
+    } // namespace tcp
 } // namespace pn
