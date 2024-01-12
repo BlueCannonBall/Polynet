@@ -98,6 +98,7 @@
 #define PN_EAI       2
 #define PN_EBADADDRS 3
 #define PN_EPTON     4
+#define PN_ESECURITY 5
 
 namespace pn {
 #ifdef _WIN32
@@ -108,19 +109,19 @@ namespace pn {
 
     namespace detail {
         extern thread_local int last_error;
-        extern thread_local int last_gai_error;
         extern thread_local int last_socket_error;
+        extern thread_local int last_gai_error;
 
         inline void set_last_error(int error) {
             last_error = error;
         }
 
-        inline void set_last_gai_error(int error) {
-            last_gai_error = error;
-        }
-
         inline void set_last_socket_error(int error) {
             last_socket_error = error;
+        }
+
+        inline void set_last_gai_error(int error) {
+            last_gai_error = error;
         }
 
         // Returns last Winsock error on Windows
@@ -239,7 +240,7 @@ namespace pn {
         int result;
         hostname.resize(NI_MAXHOST);
         port.resize(NI_MAXSERV);
-        if ((result = ::getnameinfo(sockaddr, addrlen, &hostname[0], 1025, &port[0], 32, flags)) != PN_OK) {
+        if ((result = ::getnameinfo(sockaddr, addrlen, &hostname[0], NI_MAXHOST, &port[0], NI_MAXSERV, flags)) != PN_OK) {
             detail::set_last_gai_error(result);
             detail::set_last_error(PN_EAI);
             return PN_ERROR;
@@ -263,13 +264,13 @@ namespace pn {
     }
 
     inline int inet_ntop(int af, const void* src, std::string& ret) {
-        char result[INET6_ADDRSTRLEN];
-        if (::inet_ntop(af, src, result, INET6_ADDRSTRLEN) == nullptr) {
+        ret.resize(INET6_ADDRSTRLEN);
+        if (::inet_ntop(af, src, &ret[0], INET6_ADDRSTRLEN) == nullptr) {
             detail::set_last_socket_error(detail::get_last_system_error());
             detail::set_last_error(PN_ESOCKET);
             return PN_ERROR;
         }
-        ret = result;
+        ret.resize(strlen(ret.c_str()));
         return PN_OK;
     }
 
@@ -354,12 +355,12 @@ namespace pn {
             return is_valid();
         }
 
-        inline bool operator==(const Socket& sock) const {
-            return this->fd == sock.fd;
+        inline bool operator==(const Socket& socket) const {
+            return this->fd == socket.fd;
         }
 
-        inline bool operator!=(const Socket& sock) const {
-            return this->fd != sock.fd;
+        inline bool operator!=(const Socket& socket) const {
+            return this->fd != socket.fd;
         }
     };
 
@@ -535,7 +536,7 @@ namespace pn {
             Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 Socket(fd, addr, addrlen) {}
 
-            inline ssize_t send(const void* buf, size_t len) {
+            virtual inline ssize_t send(const void* buf, size_t len) {
                 ssize_t result;
                 if ((result = ::send(this->fd, (const char*) buf, len, 0)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -544,9 +545,9 @@ namespace pn {
                 return result;
             }
 
-            ssize_t sendall(const void* buf, size_t len);
+            virtual ssize_t sendall(const void* buf, size_t len);
 
-            inline ssize_t recv(void* buf, size_t len) {
+            virtual inline ssize_t recv(void* buf, size_t len) {
                 ssize_t result;
                 if ((result = ::recv(this->fd, (char*) buf, len, 0)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -555,7 +556,7 @@ namespace pn {
                 return result;
             }
 
-            inline ssize_t peek(void* buf, size_t len) {
+            virtual inline ssize_t peek(void* buf, size_t len) {
                 ssize_t result;
                 if ((result = ::recv(this->fd, (char*) buf, len, MSG_PEEK)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -564,7 +565,7 @@ namespace pn {
                 return result;
             }
 
-            ssize_t recvall(void* buf, size_t len);
+            virtual ssize_t recvall(void* buf, size_t len);
         };
 
         class BufReceiver {

@@ -2,6 +2,9 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#ifdef POLYNET_SECURE_SOCKETS
+    #include "secure_sockets.hpp"
+#endif
 
 namespace pn {
     namespace detail {
@@ -21,9 +24,10 @@ namespace pn {
             "getaddrinfo failed",                            // PN_EAI
             "All addresses returned by getaddrinfo are bad", // PN_EBADADDRS
             "inet_pton failed",                              // PN_EPTON
+            "OpenSSL error",                                 // PN_ESECURITY
         };
 
-        if (error >= 0 && error <= 4) {
+        if (error >= 0 && error <= 5) {
             return error_strings[error];
         } else {
             return "Unknown error";
@@ -74,6 +78,12 @@ namespace pn {
             specific_error = gai_strerror();
             break;
 
+#ifdef POLYNET_SECURE_SOCKETS
+        case PN_ESECURITY:
+            specific_error = security_strerror();
+            break;
+#endif
+
         default:
             return base_error;
         }
@@ -86,13 +96,12 @@ namespace pn {
             size_t sent = 0;
             while (sent < len) {
                 ssize_t result;
-                if ((result = ::send(this->fd, ((const char*) buf) + sent, len - sent, 0)) == PN_ERROR) {
-                    int system_error = detail::get_last_system_error();
+                if ((result = this->send((const char*) buf + sent, len - sent)) == PN_ERROR) {
 #ifndef _WIN32
-                    if (system_error == EINTR) continue;
+                    if (get_last_error() == PN_ESOCKET && get_last_socket_error() == EINTR) {
+                        continue;
+                    }
 #endif
-                    detail::set_last_socket_error(system_error);
-                    detail::set_last_error(PN_ESOCKET);
 
                     if (sent) {
                         break;
@@ -117,19 +126,20 @@ namespace pn {
             size_t received = 0;
             while (received < len) {
                 ssize_t result;
-                if ((result = ::recv(this->fd, ((char*) buf) + received, len - received, 0)) == PN_ERROR) {
-                    int system_error = detail::get_last_system_error();
+                if ((result = this->recv((char*) buf + received, len - received)) == PN_ERROR) {
     #ifndef _WIN32
-                    if (system_error == EINTR) continue;
+                    if (get_last_error() == PN_ESOCKET && get_last_socket_error() == EINTR) {
+                        continue;
+                    }
     #endif
-                    detail::set_last_socket_error(system_error);
-                    detail::set_last_error(PN_ESOCKET);
 
                     if (received) {
                         break;
                     } else {
                         return PN_ERROR;
                     }
+                } else if (result == 0) {
+                    break;
                 }
                 received += result;
             }

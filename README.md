@@ -30,7 +30,7 @@ if (client.connect("localhost", 8000) == PN_ERROR) {
 
 pn::quit();
 ```
-See `polynet.hpp` and `smart_sock.hpp` to check out more ways to use Polynet.
+See `polynet.hpp` and `smart_sockets.hpp` to check out more ways to use Polynet.
 
-### What are `pn::UniqueSock`, `pn::SharedSock`, and `pn::WeakSock`?
+### What are `pn::UniqueSocket`, `pn::SharedSocket`, and `pn::WeakSocket`?
 These 3 class templates are like `std::unique_ptr`, `std::shared_ptr`, and `std::weak_ptr`, except they work with sockets rather than pointers. They ensure that sockets they own are automatically closed once they are no longer needed.
