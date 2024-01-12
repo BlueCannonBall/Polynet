@@ -55,7 +55,7 @@ namespace pn {
                 return PN_OK;
             }
 
-            inline ssize_t send(const void* buf, size_t len) override {
+            inline long send(const void* buf, size_t len) override {
                 int result;
                 if ((result = SSL_write(this->ssl, buf, len)) <= 0) {
                     detail::set_last_socket_error(detail::get_last_openssl_error());
@@ -65,36 +65,31 @@ namespace pn {
                 return result;
             }
 
-            ssize_t sendall(const void* buf, size_t len) override;
+            long sendall(const void* buf, size_t len) override;
 
-            inline ssize_t recv(void* buf, size_t len) override {
+            inline long recv(void* buf, size_t len) override {
                 int result;
-                if ((result = SSL_read(this->ssl, buf, len)) <= 0) {
-                    if (SSL_get_error(this->ssl, result) == SSL_ERROR_ZERO_RETURN) {
-                        ERR_clear_error();
-                        return 0;
-                    }
+                if ((result = SSL_read(this->ssl, buf, len)) < 0) {
                     detail::set_last_socket_error(detail::get_last_openssl_error());
                     detail::set_last_error(PN_ESECURITY);
                 }
                 return result;
             }
 
-            inline ssize_t peek(void* buf, size_t len) override {
+            inline long peek(void* buf, size_t len) override {
                 int result;
-                if ((result = SSL_peek(this->ssl, buf, len)) <= 0) {
-                    if (SSL_get_error(this->ssl, result) == SSL_ERROR_ZERO_RETURN) {
-                        ERR_clear_error();
-                        return 0;
-                    }
+                if ((result = SSL_peek(this->ssl, buf, len)) < 0) {
                     detail::set_last_socket_error(detail::get_last_openssl_error());
                     detail::set_last_error(PN_ESECURITY);
                 }
                 return result;
             }
 
-            ssize_t recvall(void* buf, size_t len) override;
+            long recvall(void* buf, size_t len) override;
         };
+
+        // class SecureServer : public Server {
+        // };
     } // namespace tcp
 } // namespace pn
 

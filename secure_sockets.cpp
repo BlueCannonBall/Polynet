@@ -35,10 +35,10 @@ namespace pn {
             return PN_OK;
         }
 
-        ssize_t SecureConnection::sendall(const void* buf, size_t len) {
+        long SecureConnection::sendall(const void* buf, size_t len) {
             size_t sent = 0;
             while (sent < len) {
-                ssize_t result;
+                long result;
                 if ((result = this->send((const char*) buf + sent, len - sent)) == PN_ERROR) {
                     if (sent) {
                         break;
@@ -51,10 +51,10 @@ namespace pn {
             return sent;
         }
 
-        ssize_t SecureConnection::recvall(void* buf, size_t len) {
+        long SecureConnection::recvall(void* buf, size_t len) {
             size_t received = 0;
             while (received < len) {
-                ssize_t result;
+                long result;
                 if ((result = this->recv((char*) buf + received, len - received)) == PN_ERROR) {
                     if (received) {
                         break;

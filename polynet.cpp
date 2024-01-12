@@ -92,10 +92,10 @@ namespace pn {
     }
 
     namespace tcp {
-        ssize_t Connection::sendall(const void* buf, size_t len) {
+        long Connection::sendall(const void* buf, size_t len) {
             size_t sent = 0;
             while (sent < len) {
-                ssize_t result;
+                long result;
                 if ((result = this->send((const char*) buf + sent, len - sent)) == PN_ERROR) {
 #ifndef _WIN32
                     if (get_last_error() == PN_ESOCKET && get_last_socket_error() == EINTR) {
@@ -114,9 +114,9 @@ namespace pn {
             return sent;
         }
 
-        ssize_t Connection::recvall(void* buf, size_t len) {
+        long Connection::recvall(void* buf, size_t len) {
 #if defined(_WIN32) && _WIN32_WINNT >= _WIN32_WINNT_VISTA
-            ssize_t result;
+            long result;
             if ((result = ::recv(this->fd, (char*) buf, size, MSG_WAITALL)) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
@@ -125,7 +125,7 @@ namespace pn {
 #else
             size_t received = 0;
             while (received < len) {
-                ssize_t result;
+                long result;
                 if ((result = this->recv((char*) buf + received, len - received)) == PN_ERROR) {
     #ifndef _WIN32
                     if (get_last_error() == PN_ESOCKET && get_last_socket_error() == EINTR) {
@@ -147,7 +147,7 @@ namespace pn {
 #endif
         }
 
-        ssize_t BufReceiver::recv(Connection& conn, void* buf, size_t len) {
+        long BufReceiver::recv(Connection& conn, void* buf, size_t len) {
             if (!this->size) {
                 return conn.recvall(buf, len);
             }
@@ -160,7 +160,7 @@ namespace pn {
                 } else if (len > this->size) {
                     return conn.recv(buf, len);
                 } else {
-                    ssize_t result;
+                    long result;
                     this->buf.resize(this->size);
                     if ((result = conn.recv(this->buf.data(), this->size)) == PN_ERROR) {
                         return PN_ERROR;
@@ -182,7 +182,7 @@ namespace pn {
             }
         }
 
-        ssize_t BufReceiver::peek(Connection& conn, void* buf, size_t len) {
+        long BufReceiver::peek(Connection& conn, void* buf, size_t len) {
             if (!this->size) {
                 return conn.peek(buf, len);
             }
@@ -194,7 +194,7 @@ namespace pn {
                 } else if (len > this->size) {
                     return conn.peek(buf, len);
                 } else {
-                    ssize_t result;
+                    long result;
                     this->buf.resize(this->size);
                     if ((result = conn.peek(this->buf.data(), this->size)) == PN_ERROR) {
                         return PN_ERROR;
@@ -213,7 +213,7 @@ namespace pn {
             }
         }
 
-        ssize_t BufReceiver::recvall(Connection& conn, void* buf, size_t len) {
+        long BufReceiver::recvall(Connection& conn, void* buf, size_t len) {
             if (!this->size) {
                 return conn.recvall(buf, len);
             }
@@ -224,7 +224,7 @@ namespace pn {
                 } else if (len > 1) {
                     return conn.recvall(buf, len);
                 } else {
-                    ssize_t result;
+                    long result;
                     this->buf.resize(this->size);
                     if ((result = conn.recv(this->buf.data(), this->size)) == PN_ERROR) {
                         return PN_ERROR;
@@ -236,7 +236,7 @@ namespace pn {
                     return std::min<long long>(len, result);
                 }
 
-                ssize_t result;
+                long result;
                 if ((result = conn.recvall((char*) buf + this->buf.size(), len - this->buf.size())) == PN_ERROR) {
                     return PN_ERROR;
                 }
