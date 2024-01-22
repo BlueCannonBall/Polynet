@@ -1,10 +1,8 @@
 #include "polynet.hpp"
+#include "secure_sockets.hpp"
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-#ifdef POLYNET_SECURE_SOCKETS
-    #include "secure_sockets.hpp"
-#endif
 
 namespace pn {
     namespace detail {
@@ -24,7 +22,7 @@ namespace pn {
             "getaddrinfo failed",                            // PN_EAI
             "All addresses returned by getaddrinfo are bad", // PN_EBADADDRS
             "inet_pton failed",                              // PN_EPTON
-            "OpenSSL error",                                 // PN_ESECURITY
+            "SSL error",                                     // PN_ESSL
         };
 
         if (error >= 0 && error <= 5) {
@@ -78,11 +76,9 @@ namespace pn {
             specific_error = gai_strerror();
             break;
 
-#ifdef POLYNET_SECURE_SOCKETS
-        case PN_ESECURITY:
-            specific_error = security_strerror();
+        case PN_ESSL:
+            specific_error = ssl_strerror();
             break;
-#endif
 
         default:
             return base_error;
@@ -255,7 +251,7 @@ namespace pn {
             }
         }
 
-        int Server::listen(const std::function<bool(Connection&, void*)>& cb, int backlog, void* data) { // This function BLOCKS
+        int Server::listen(const std::function<bool(connection_type&, void*)>& cb, int backlog, void* data) { // This function BLOCKS
             if (this->backlog != backlog || this->backlog == -1) {
                 if (::listen(this->fd, backlog) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -266,7 +262,7 @@ namespace pn {
             }
 
             for (;;) {
-                Connection conn;
+                connection_type conn;
                 if ((conn.fd = accept(this->fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
 #ifdef _WIN32
                     if (detail::get_last_system_error() != WSAECONNRESET) {

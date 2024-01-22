@@ -95,7 +95,7 @@
 #define PN_EAI       2
 #define PN_EBADADDRS 3
 #define PN_EPTON     4
-#define PN_ESECURITY 5
+#define PN_ESSL      5
 
 namespace pn {
 #ifdef _WIN32
@@ -362,14 +362,14 @@ namespace pn {
     };
 
     template <class Base, int Socktype, int Protocol>
-    class Server : public Base {
+    class BasicServer : public Base {
     public:
-        Server() = default;
-        Server(sockfd_t fd):
+        BasicServer() = default;
+        BasicServer(sockfd_t fd):
             Base(fd) {}
-        Server(const struct sockaddr& addr, socklen_t addrlen):
+        BasicServer(const struct sockaddr& addr, socklen_t addrlen):
             Base(addr, addrlen) {}
-        Server(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
+        BasicServer(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
             Base(fd, addr, addrlen) {}
 
         int bind(const std::string& hostname, const std::string& port) {
@@ -450,14 +450,14 @@ namespace pn {
     };
 
     template <class Base, int Socktype, int Protocol>
-    class Client : public Base {
+    class BasicClient : public Base {
     public:
-        Client() = default;
-        Client(sockfd_t fd):
+        BasicClient() = default;
+        BasicClient(sockfd_t fd):
             Base(fd) {}
-        Client(const struct sockaddr& addr, socklen_t addrlen):
+        BasicClient(const struct sockaddr& addr, socklen_t addrlen):
             Base(addr, addrlen) {}
-        Client(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
+        BasicClient(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
             Base(fd, addr, addrlen) {}
 
         int connect(const std::string& hostname, const std::string& port) {
@@ -584,7 +584,7 @@ namespace pn {
             }
         };
 
-        class Server : public pn::Server<Socket, SOCK_STREAM, IPPROTO_TCP> {
+        class Server : public BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP> {
         protected:
             int backlog = -1;
 
@@ -593,17 +593,17 @@ namespace pn {
 
             Server() = default;
             Server(sockfd_t fd):
-                pn::Server<Socket, SOCK_STREAM, IPPROTO_TCP>(fd) {}
+                BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(fd) {}
             Server(const struct sockaddr& addr, socklen_t addrlen):
-                pn::Server<Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
+                BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
             Server(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
-                pn::Server<Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
+                BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
 
             // Return false from the callback to stop listening
-            int listen(const std::function<bool(Connection&, void*)>& cb, int backlog = 128, void* data = nullptr);
+            int listen(const std::function<bool(connection_type&, void*)>& cb, int backlog = 128, void* data = nullptr);
         };
 
-        using Client = pn::Client<Connection, SOCK_STREAM, IPPROTO_TCP>;
+        using Client = BasicClient<Connection, SOCK_STREAM, IPPROTO_TCP>;
     } // namespace tcp
 
     namespace udp {
@@ -636,8 +636,8 @@ namespace pn {
             }
         };
 
-        using Server = pn::Server<pn::udp::Socket, SOCK_DGRAM, IPPROTO_UDP>;
-        using Client = pn::Client<pn::udp::Socket, SOCK_DGRAM, IPPROTO_UDP>;
+        using Server = BasicServer<pn::udp::Socket, SOCK_DGRAM, IPPROTO_UDP>;
+        using Client = BasicClient<pn::udp::Socket, SOCK_DGRAM, IPPROTO_UDP>;
     } // namespace udp
 } // namespace pn
 
