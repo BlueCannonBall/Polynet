@@ -1,7 +1,9 @@
 #include "secure_sockets.hpp"
 #include "polynet.hpp"
+#include <netinet/in.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <sys/socket.h>
 
 namespace pn {
     namespace detail {
@@ -135,14 +137,7 @@ namespace pn {
                 return PN_ERROR;
             }
 
-            if (!(this->ssl = SSL_new(this->ssl_ctx))) {
-                detail::set_last_ssl_error(detail::get_last_ssl_error());
-                detail::set_last_error(PN_ESSL);
-                return PN_ERROR;
-            }
-            if (SSL_set_fd(this->ssl, this->fd) == 0) {
-                detail::set_last_ssl_error(detail::get_last_ssl_error());
-                detail::set_last_error(PN_ESSL);
+            if (BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::ssl_init(this->ssl_ctx) == PN_ERROR) {
                 return PN_ERROR;
             }
 
