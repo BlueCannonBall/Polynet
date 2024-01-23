@@ -46,12 +46,12 @@ namespace pn {
 
             inline int ssl_init(SSL_CTX* ssl_ctx) {
                 if (!(this->ssl = SSL_new(ssl_ctx))) {
-                    detail::set_last_socket_error(detail::get_last_ssl_error());
+                    detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
                 }
                 if (SSL_set_fd(this->ssl, this->fd) == 0) {
-                    detail::set_last_socket_error(detail::get_last_ssl_error());
+                    detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
                 }
@@ -60,7 +60,7 @@ namespace pn {
 
             inline int ssl_accept() {
                 if (SSL_accept(ssl) <= 0) {
-                    detail::set_last_socket_error(detail::get_last_ssl_error());
+                    detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
                 }
@@ -70,7 +70,7 @@ namespace pn {
             int close(bool reset = true, bool validity_check = true) {
                 if (!validity_check || this->ssl) {
                     if (SSL_shutdown(this->ssl) < 0) {
-                        detail::set_last_socket_error(detail::get_last_ssl_error());
+                        detail::set_last_ssl_error(detail::get_last_ssl_error());
                         detail::set_last_error(PN_ESSL);
                         return PN_ERROR;
                     }
@@ -88,7 +88,7 @@ namespace pn {
             inline long send(const void* buf, size_t len) override {
                 int result;
                 if ((result = SSL_write(this->ssl, buf, len)) <= 0) {
-                    detail::set_last_socket_error(detail::get_last_ssl_error());
+                    detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
                 }
@@ -100,7 +100,7 @@ namespace pn {
             inline long recv(void* buf, size_t len) override {
                 int result;
                 if ((result = SSL_read(this->ssl, buf, len)) < 0) {
-                    detail::set_last_socket_error(detail::get_last_ssl_error());
+                    detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                 }
                 return result;
@@ -109,7 +109,7 @@ namespace pn {
             inline long peek(void* buf, size_t len) override {
                 int result;
                 if ((result = SSL_peek(this->ssl, buf, len)) < 0) {
-                    detail::set_last_socket_error(detail::get_last_ssl_error());
+                    detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                 }
                 return result;
@@ -150,7 +150,7 @@ namespace pn {
                 return PN_OK;
             }
 
-            int listen(const std::function<bool(connection_type&, void*)>& cb, int backlog, void* data);
+            int listen(const std::function<bool(connection_type&, void*)>& cb, int backlog = 128, void* data = nullptr);
         };
 
         class SecureClient : public BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP> {
@@ -171,11 +171,11 @@ namespace pn {
                 BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, ssl, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
 
-            int ssl_init(const std::string& hostname, int verify_mode = SSL_VERIFY_PEER, const std::string& verify_dir = {}, const std::string& verify_file = {}, const std::string& verify_store = {});
+            int ssl_init(const std::string& hostname, int verify_mode = SSL_VERIFY_PEER, const std::string& ca_file = {}, const std::string& ca_path = {});
 
             inline int ssl_connect() {
                 if (SSL_connect(ssl) <= 0) {
-                    detail::set_last_socket_error(detail::get_last_ssl_error());
+                    detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
                 }

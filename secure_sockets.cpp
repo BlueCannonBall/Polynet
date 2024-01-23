@@ -45,18 +45,18 @@ namespace pn {
 
         int SecureServer::ssl_init(const std::string& certificate_chain_file, const std::string& private_key_file, int private_key_file_type) {
             if (!(this->ssl_ctx = SSL_CTX_new(TLS_server_method()))) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
+                detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
                 return PN_ERROR;
             }
 
             if (SSL_CTX_use_certificate_chain_file(this->ssl_ctx, certificate_chain_file.c_str()) != 1) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
+                detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
                 return PN_ERROR;
             }
             if (SSL_CTX_use_PrivateKey_file(this->ssl_ctx, private_key_file.c_str(), private_key_file_type) != 1) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
+                detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
                 return PN_ERROR;
             }
@@ -67,7 +67,7 @@ namespace pn {
         int SecureServer::listen(const std::function<bool(connection_type&, void*)>& cb, int backlog, void* data) { // This function BLOCKS
             if (this->backlog != backlog || this->backlog == -1) {
                 if (::listen(this->fd, backlog) == PN_ERROR) {
-                    detail::set_last_socket_error(detail::get_last_system_error());
+                    detail::set_last_ssl_error(detail::get_last_system_error());
                     detail::set_last_error(PN_ESOCKET);
                     return PN_ERROR;
                 }
@@ -115,66 +115,44 @@ namespace pn {
             return PN_OK;
         }
 
-        int SecureClient::ssl_init(const std::string& hostname, int verify_mode, const std::string& verify_dir, const std::string& verify_file, const std::string& verify_store) {
+        int SecureClient::ssl_init(const std::string& hostname, int verify_mode, const std::string& ca_file, const std::string& ca_path) {
             if (!(this->ssl_ctx = SSL_CTX_new(TLS_client_method()))) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
+                detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
                 return PN_ERROR;
             }
 
             SSL_CTX_set_verify(this->ssl_ctx, verify_mode, nullptr);
-            if (verify_dir.empty()) {
-                if (SSL_CTX_set_default_verify_dir(this->ssl_ctx) == 0) {
-                    detail::set_last_socket_error(detail::get_last_ssl_error());
+            if (ca_file.empty() && ca_path.empty()) {
+                if (SSL_CTX_set_default_verify_paths(this->ssl_ctx) == 0) {
+                    detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
                 }
-            } else if (SSL_CTX_load_verify_dir(this->ssl_ctx, verify_dir.c_str()) == 0) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
-                detail::set_last_error(PN_ESSL);
-                return PN_ERROR;
-            }
-            if (verify_file.empty()) {
-                if (SSL_CTX_set_default_verify_file(this->ssl_ctx) == 0) {
-                    detail::set_last_socket_error(detail::get_last_ssl_error());
-                    detail::set_last_error(PN_ESSL);
-                    return PN_ERROR;
-                }
-            } else if (SSL_CTX_load_verify_file(this->ssl_ctx, verify_file.c_str()) == 0) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
-                detail::set_last_error(PN_ESSL);
-                return PN_ERROR;
-            }
-            if (verify_store.empty()) {
-                if (SSL_CTX_set_default_verify_store(this->ssl_ctx) == 0) {
-                    detail::set_last_socket_error(detail::get_last_ssl_error());
-                    detail::set_last_error(PN_ESSL);
-                    return PN_ERROR;
-                }
-            } else if (SSL_CTX_load_verify_store(this->ssl_ctx, verify_store.c_str()) == 0) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
+            } else if (SSL_CTX_load_verify_locations(this->ssl_ctx, ca_file.empty() ? nullptr : ca_file.c_str(), ca_path.empty() ? nullptr : ca_path.c_str()) == 0) {
+                detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
                 return PN_ERROR;
             }
 
             if (!(this->ssl = SSL_new(this->ssl_ctx))) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
+                detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
                 return PN_ERROR;
             }
             if (SSL_set_fd(this->ssl, this->fd) == 0) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
+                detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
                 return PN_ERROR;
             }
 
             if (SSL_set_tlsext_host_name(ssl, hostname.c_str()) == 0) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
+                detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
                 return PN_ERROR;
             }
             if (SSL_set1_host(ssl, hostname.c_str()) == 0) {
-                detail::set_last_socket_error(detail::get_last_ssl_error());
+                detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
                 return PN_ERROR;
             }

@@ -397,7 +397,7 @@ namespace pn {
                     break;
                 }
 
-                if (Base::close(true, false) == PN_ERROR) {
+                if (Base::close() == PN_ERROR) {
                     pn::freeaddrinfo(ai_list);
                     return PN_ERROR;
                 }
@@ -473,7 +473,7 @@ namespace pn {
                     break;
                 }
 
-                if (Base::close(true, false) == PN_ERROR) {
+                if (Base::close() == PN_ERROR) {
                     pn::freeaddrinfo(ai_list);
                     return PN_ERROR;
                 }
