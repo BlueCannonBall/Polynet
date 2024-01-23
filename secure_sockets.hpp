@@ -156,7 +156,6 @@ namespace pn {
         class SecureClient : public BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP> {
         protected:
             SSL_CTX* ssl_ctx;
-            SSL* ssl;
 
         private:
             using BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::ssl_accept;
@@ -164,15 +163,13 @@ namespace pn {
         public:
             SecureClient() = default;
             SecureClient(sockfd_t fd, SSL_CTX* ssl_ctx, SSL* ssl):
-                BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd),
-                ssl_ctx(ssl_ctx),
-                ssl(ssl) {}
+                BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, ssl),
+                ssl_ctx(ssl_ctx) {}
             SecureClient(const struct sockaddr& addr, socklen_t addrlen):
                 BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
             SecureClient(sockfd_t fd, SSL_CTX* ssl_ctx, SSL* ssl, const struct sockaddr& addr, socklen_t addrlen):
-                BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen),
-                ssl_ctx(ssl_ctx),
-                ssl(ssl) {}
+                BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, ssl, addr, addrlen),
+                ssl_ctx(ssl_ctx) {}
 
             int ssl_init(const std::string& hostname, int verify_mode = SSL_VERIFY_PEER, const std::string& verify_dir = {}, const std::string& verify_file = {}, const std::string& verify_store = {});
 

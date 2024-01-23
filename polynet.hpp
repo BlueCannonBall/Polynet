@@ -364,13 +364,9 @@ namespace pn {
     template <class Base, int Socktype, int Protocol>
     class BasicServer : public Base {
     public:
-        BasicServer() = default;
-        BasicServer(sockfd_t fd):
-            Base(fd) {}
-        BasicServer(const struct sockaddr& addr, socklen_t addrlen):
-            Base(addr, addrlen) {}
-        BasicServer(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
-            Base(fd, addr, addrlen) {}
+        template <typename... Ts>
+        BasicServer(Ts... args):
+            Base(args...) {}
 
         int bind(const std::string& hostname, const std::string& port) {
             struct addrinfo* ai_list;
@@ -452,13 +448,9 @@ namespace pn {
     template <class Base, int Socktype, int Protocol>
     class BasicClient : public Base {
     public:
-        BasicClient() = default;
-        BasicClient(sockfd_t fd):
-            Base(fd) {}
-        BasicClient(const struct sockaddr& addr, socklen_t addrlen):
-            Base(addr, addrlen) {}
-        BasicClient(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
-            Base(fd, addr, addrlen) {}
+        template <typename... Ts>
+        BasicClient(Ts... args):
+            Base(args...) {}
 
         int connect(const std::string& hostname, const std::string& port) {
             struct addrinfo* ai_list;
