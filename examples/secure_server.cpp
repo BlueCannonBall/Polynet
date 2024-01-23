@@ -34,7 +34,7 @@ int main() {
                 return true;
             }
 
-            return true;
+            return true; // If you return false, the listen function stops and returns PN_OK
         }) == PN_ERROR) {
         std::cerr << "Error: " << pn::universal_strerror() << std::endl;
         return 1;
