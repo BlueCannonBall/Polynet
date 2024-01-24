@@ -49,6 +49,7 @@ namespace pn {
     public:
         typedef T sock_type;
 
+        BasicSocket() = default;
         BasicSocket(const T& socket):
             socket(socket) {}
 
