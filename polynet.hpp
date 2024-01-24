@@ -30,12 +30,6 @@
     #include <sys/socket.h>
     #include <sys/types.h>
     #include <unistd.h>
-
-    #if __has_include(<endian.h>)
-        #include <endian.h>
-    #elif __has_include(<machine/endian.h>)
-        #include <machine/endian.h>
-    #endif
 #endif
 
 // Other includes
@@ -47,6 +41,16 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#if __has_include(<endian.h>)
+    #include <endian.h>
+#elif __has_include(<machine/endian.h>)
+    #include <machine/endian.h>
+#else
+    #define LITTLE_ENDIAN 1234
+    #define BIG_ENDIAN    4321
+    #define PDP_ENDIAN    3412
+    #define BYTE_ORDER    LITTLE_ENDIAN
+#endif
 
 #define PN_OK 0
 
