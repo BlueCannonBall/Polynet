@@ -67,7 +67,7 @@ namespace pn {
                 return PN_OK;
             }
 
-            int close(bool reset = true, bool validity_check = true) {
+            int close(bool reset = true, bool validity_check = true) override {
                 if (!validity_check || this->ssl) {
                     if (SSL_shutdown(this->ssl) < 0) {
                         detail::set_last_ssl_error(detail::get_last_ssl_error());
@@ -137,7 +137,7 @@ namespace pn {
 
             int ssl_init(const std::string& certificate_chain_file, const std::string& private_key_file, int private_key_file_type);
 
-            inline int close(bool reset = true, bool validity_check = true) {
+            inline int close(bool reset = true, bool validity_check = true) override {
                 if (!validity_check || this->ssl_ctx) {
                     SSL_CTX_free(this->ssl_ctx);
                     if (reset) this->ssl_ctx = nullptr;

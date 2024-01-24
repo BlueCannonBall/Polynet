@@ -328,7 +328,7 @@ namespace pn {
         }
 
         // By default, the closed socket file descriptor is LOST if this function executes successfully
-        inline int close(bool reset_fd = true, bool validity_check = true) {
+        inline virtual int close(bool reset_fd = true, bool validity_check = true) {
             if (validity_check && !this->is_valid()) {
                 return PN_OK;
             }
