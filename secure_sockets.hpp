@@ -30,10 +30,9 @@ namespace pn {
 
     namespace tcp {
         class SecureConnection : public Connection {
-        protected:
+        public:
             SSL* ssl;
 
-        public:
             SecureConnection() = default;
             SecureConnection(sockfd_t fd, SSL* ssl):
                 Connection(fd),
@@ -119,10 +118,9 @@ namespace pn {
         };
 
         class SecureServer : public Server {
-        protected:
+        public:
             SSL_CTX* ssl_ctx = nullptr;
 
-        public:
             typedef SecureConnection connection_type;
 
             SecureServer() = default;
