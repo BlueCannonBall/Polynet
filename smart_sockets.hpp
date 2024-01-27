@@ -54,37 +54,37 @@ namespace pn {
             socket(socket) {}
 
         T get() const {
-            return this->socket;
+            return socket;
         }
 
         const T& operator*() const {
-            return this->socket;
+            return socket;
         }
 
         T& operator*() {
-            return this->socket;
+            return socket;
         }
 
         const T* operator->() const {
-            return &this->socket;
+            return &socket;
         }
 
         T* operator->() {
-            return &this->socket;
+            return &socket;
         }
 
         operator bool() const {
-            return this->socket.is_valid();
+            return socket.is_valid();
         }
 
         template <typename U>
         bool operator==(const U& other_sock) const {
-            return this->socket == other_sock.socket;
+            return socket == other_sock.socket;
         }
 
         template <typename U>
         bool operator!=(const U& other_sock) const {
-            return this->socket != other_sock.socket;
+            return socket != other_sock.socket;
         }
     };
 

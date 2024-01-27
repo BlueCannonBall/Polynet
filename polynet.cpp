@@ -92,7 +92,7 @@ namespace pn {
             size_t sent = 0;
             while (sent < len) {
                 long result;
-                if ((result = this->send((const char*) buf + sent, len - sent)) == PN_ERROR) {
+                if ((result = send((const char*) buf + sent, len - sent)) == PN_ERROR) {
 #ifndef _WIN32
                     if (get_last_error() == PN_ESOCKET && get_last_socket_error() == EINTR) {
                         continue;
@@ -113,7 +113,7 @@ namespace pn {
         long Connection::recvall(void* buf, size_t len) {
 #if defined(_WIN32) && _WIN32_WINNT >= _WIN32_WINNT_VISTA
             long result;
-            if ((result = ::recv(this->fd, (char*) buf, len, MSG_WAITALL)) == PN_ERROR) {
+            if ((result = ::recv(fd, (char*) buf, len, MSG_WAITALL)) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
             }
@@ -122,7 +122,7 @@ namespace pn {
             size_t received = 0;
             while (received < len) {
                 long result;
-                if ((result = this->recv((char*) buf + received, len - received)) == PN_ERROR) {
+                if ((result = recv((char*) buf + received, len - received)) == PN_ERROR) {
     #ifndef _WIN32
                     if (get_last_error() == PN_ESOCKET && get_last_socket_error() == EINTR) {
                         continue;
@@ -144,7 +144,7 @@ namespace pn {
         }
 
         long BufReceiver::recv(Connection& conn, void* buf, size_t len) {
-            if (!this->size) {
+            if (!size) {
                 return conn.recvall(buf, len);
             }
 
@@ -153,12 +153,12 @@ namespace pn {
                     memcpy(buf, this->buf.data(), this->buf.size());
                     this->buf.clear();
                     return this->buf.size();
-                } else if (len > this->size) {
+                } else if (len > size) {
                     return conn.recv(buf, len);
                 } else {
                     long result;
-                    this->buf.resize(this->size);
-                    if ((result = conn.recv(this->buf.data(), this->size)) == PN_ERROR) {
+                    this->buf.resize(size);
+                    if ((result = conn.recv(this->buf.data(), size)) == PN_ERROR) {
                         return PN_ERROR;
                     }
                     this->buf.resize(result);
@@ -179,7 +179,7 @@ namespace pn {
         }
 
         long BufReceiver::peek(Connection& conn, void* buf, size_t len) {
-            if (!this->size) {
+            if (!size) {
                 return conn.peek(buf, len);
             }
 
@@ -187,12 +187,12 @@ namespace pn {
                 if (!this->buf.empty()) {
                     memcpy(buf, this->buf.data(), this->buf.size());
                     return this->buf.size();
-                } else if (len > this->size) {
+                } else if (len > size) {
                     return conn.peek(buf, len);
                 } else {
                     long result;
-                    this->buf.resize(this->size);
-                    if ((result = conn.peek(this->buf.data(), this->size)) == PN_ERROR) {
+                    this->buf.resize(size);
+                    if ((result = conn.peek(this->buf.data(), size)) == PN_ERROR) {
                         return PN_ERROR;
                     }
                     this->buf.resize(result);
@@ -210,7 +210,7 @@ namespace pn {
         }
 
         long BufReceiver::recvall(Connection& conn, void* buf, size_t len) {
-            if (!this->size) {
+            if (!size) {
                 return conn.recvall(buf, len);
             }
 
@@ -221,8 +221,8 @@ namespace pn {
                     return conn.recvall(buf, len);
                 } else {
                     long result;
-                    this->buf.resize(this->size);
-                    if ((result = conn.recv(this->buf.data(), this->size)) == PN_ERROR) {
+                    this->buf.resize(size);
+                    if ((result = conn.recv(this->buf.data(), size)) == PN_ERROR) {
                         return PN_ERROR;
                     }
                     this->buf.resize(result);
@@ -263,7 +263,7 @@ namespace pn {
 
             for (;;) {
                 connection_type conn;
-                if ((conn.fd = accept(this->fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
+                if ((conn.fd = accept(fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
 #ifdef _WIN32
                     if (detail::get_last_system_error() != WSAECONNRESET) {
                         detail::set_last_socket_error(detail::get_last_system_error());

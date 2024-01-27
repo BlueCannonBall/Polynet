@@ -44,17 +44,24 @@ namespace pn {
                 ssl(ssl) {}
 
             int ssl_init(SSL_CTX* ssl_ctx) {
-                if (!(this->ssl = SSL_new(ssl_ctx))) {
+                if (!(ssl = SSL_new(ssl_ctx))) {
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
                 }
-                if (SSL_set_fd(this->ssl, this->fd) == 0) {
+                if (SSL_set_fd(ssl, fd) == 0) {
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
                 }
                 return PN_OK;
+            }
+
+            void ssl_reset(bool reset_ptr = true, bool validity_check = true) {
+                if (!validity_check || ssl) {
+                    SSL_free(ssl);
+                    if (reset_ptr) ssl = nullptr;
+                }
             }
 
             int ssl_accept() {
@@ -67,14 +74,14 @@ namespace pn {
             }
 
             int close(bool reset = true, bool validity_check = true) override {
-                if (!validity_check || this->ssl) {
-                    if (SSL_shutdown(this->ssl) < 0) {
+                if (!validity_check || ssl) {
+                    if (SSL_shutdown(ssl) < 0) {
                         detail::set_last_ssl_error(detail::get_last_ssl_error());
                         detail::set_last_error(PN_ESSL);
                         return PN_ERROR;
                     }
-                    SSL_free(this->ssl);
-                    if (reset) this->ssl = nullptr;
+                    SSL_free(ssl);
+                    if (reset) ssl = nullptr;
                 }
 
                 if (Connection::close(reset, validity_check) == PN_ERROR) {
@@ -85,9 +92,9 @@ namespace pn {
             }
 
             long send(const void* buf, size_t len) override {
-                if (this->ssl) {
+                if (ssl) {
                     int result;
-                    if ((result = SSL_write(this->ssl, buf, len)) <= 0) {
+                    if ((result = SSL_write(ssl, buf, len)) <= 0) {
                         detail::set_last_ssl_error(detail::get_last_ssl_error());
                         detail::set_last_error(PN_ESSL);
                         return PN_ERROR;
@@ -101,9 +108,9 @@ namespace pn {
             long sendall(const void* buf, size_t len) override;
 
             long recv(void* buf, size_t len) override {
-                if (this->ssl) {
+                if (ssl) {
                     int result;
-                    if ((result = SSL_read(this->ssl, buf, len)) < 0) {
+                    if ((result = SSL_read(ssl, buf, len)) < 0) {
                         detail::set_last_ssl_error(detail::get_last_ssl_error());
                         detail::set_last_error(PN_ESSL);
                     }
@@ -114,9 +121,9 @@ namespace pn {
             }
 
             long peek(void* buf, size_t len) override {
-                if (this->ssl) {
+                if (ssl) {
                     int result;
-                    if ((result = SSL_peek(this->ssl, buf, len)) < 0) {
+                    if ((result = SSL_peek(ssl, buf, len)) < 0) {
                         detail::set_last_ssl_error(detail::get_last_ssl_error());
                         detail::set_last_error(PN_ESSL);
                     }
@@ -148,9 +155,9 @@ namespace pn {
             int ssl_init(const std::string& certificate_chain_file, const std::string& private_key_file, int private_key_file_type);
 
             int close(bool reset = true, bool validity_check = true) override {
-                if (!validity_check || this->ssl_ctx) {
-                    SSL_CTX_free(this->ssl_ctx);
-                    if (reset) this->ssl_ctx = nullptr;
+                if (!validity_check || ssl_ctx) {
+                    SSL_CTX_free(ssl_ctx);
+                    if (reset) ssl_ctx = nullptr;
                 }
 
                 if (Server::close(reset, validity_check) == PN_ERROR) {
