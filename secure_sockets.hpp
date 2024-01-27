@@ -85,33 +85,45 @@ namespace pn {
             }
 
             long send(const void* buf, size_t len) override {
-                int result;
-                if ((result = SSL_write(this->ssl, buf, len)) <= 0) {
-                    detail::set_last_ssl_error(detail::get_last_ssl_error());
-                    detail::set_last_error(PN_ESSL);
-                    return PN_ERROR;
+                if (this->ssl) {
+                    int result;
+                    if ((result = SSL_write(this->ssl, buf, len)) <= 0) {
+                        detail::set_last_ssl_error(detail::get_last_ssl_error());
+                        detail::set_last_error(PN_ESSL);
+                        return PN_ERROR;
+                    }
+                    return result;
+                } else {
+                    return Connection::send(buf, len);
                 }
-                return result;
             }
 
             long sendall(const void* buf, size_t len) override;
 
             long recv(void* buf, size_t len) override {
-                int result;
-                if ((result = SSL_read(this->ssl, buf, len)) < 0) {
-                    detail::set_last_ssl_error(detail::get_last_ssl_error());
-                    detail::set_last_error(PN_ESSL);
+                if (this->ssl) {
+                    int result;
+                    if ((result = SSL_read(this->ssl, buf, len)) < 0) {
+                        detail::set_last_ssl_error(detail::get_last_ssl_error());
+                        detail::set_last_error(PN_ESSL);
+                    }
+                    return result;
+                } else {
+                    return Connection::recv(buf, len);
                 }
-                return result;
             }
 
             long peek(void* buf, size_t len) override {
-                int result;
-                if ((result = SSL_peek(this->ssl, buf, len)) < 0) {
-                    detail::set_last_ssl_error(detail::get_last_ssl_error());
-                    detail::set_last_error(PN_ESSL);
+                if (this->ssl) {
+                    int result;
+                    if ((result = SSL_peek(this->ssl, buf, len)) < 0) {
+                        detail::set_last_ssl_error(detail::get_last_ssl_error());
+                        detail::set_last_error(PN_ESSL);
+                    }
+                    return result;
+                } else {
+                    return Connection::peek(buf, len);
                 }
-                return result;
             }
 
             long recvall(void* buf, size_t len) override;

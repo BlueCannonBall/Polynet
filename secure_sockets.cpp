@@ -12,37 +12,45 @@ namespace pn {
 
     namespace tcp {
         long SecureConnection::sendall(const void* buf, size_t len) {
-            size_t sent = 0;
-            while (sent < len) {
-                long result;
-                if ((result = this->send((const char*) buf + sent, len - sent)) == PN_ERROR) {
-                    if (sent) {
-                        break;
-                    } else {
-                        return PN_ERROR;
+            if (this->ssl) {
+                size_t sent = 0;
+                while (sent < len) {
+                    long result;
+                    if ((result = this->send((const char*) buf + sent, len - sent)) == PN_ERROR) {
+                        if (sent) {
+                            break;
+                        } else {
+                            return PN_ERROR;
+                        }
                     }
+                    sent += result;
                 }
-                sent += result;
+                return sent;
+            } else {
+                return Connection::sendall(buf, len);
             }
-            return sent;
         }
 
         long SecureConnection::recvall(void* buf, size_t len) {
-            size_t received = 0;
-            while (received < len) {
-                long result;
-                if ((result = this->recv((char*) buf + received, len - received)) == PN_ERROR) {
-                    if (received) {
+            if (this->ssl) {
+                size_t received = 0;
+                while (received < len) {
+                    long result;
+                    if ((result = this->recv((char*) buf + received, len - received)) == PN_ERROR) {
+                        if (received) {
+                            break;
+                        } else {
+                            return PN_ERROR;
+                        }
+                    } else if (result == 0) {
                         break;
-                    } else {
-                        return PN_ERROR;
                     }
-                } else if (result == 0) {
-                    break;
+                    received += result;
                 }
-                received += result;
+                return received;
+            } else {
+                return Connection::recvall(buf, len);
             }
-            return received;
         }
 
         int SecureServer::ssl_init(const std::string& certificate_chain_file, const std::string& private_key_file, int private_key_file_type) {

@@ -113,7 +113,7 @@ namespace pn {
         long Connection::recvall(void* buf, size_t len) {
 #if defined(_WIN32) && _WIN32_WINNT >= _WIN32_WINNT_VISTA
             long result;
-            if ((result = ::recv(this->fd, (char*) buf, size, MSG_WAITALL)) == PN_ERROR) {
+            if ((result = ::recv(this->fd, (char*) buf, len, MSG_WAITALL)) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
             }
