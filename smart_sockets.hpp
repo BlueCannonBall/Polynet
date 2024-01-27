@@ -13,14 +13,14 @@
     template <typename type2>                                                   \
     class_name(class_name<type2>&& arg_name, bool _same_type = false)
 #define _POLYNET_COPY_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name) \
-    inline class_name& operator=(const class_name& arg_name) {            \
-        return class_name::operator= <type1>(arg_name);                   \
+    class_name& operator=(const class_name& arg_name) {                   \
+        return class_name::operator=<type1>(arg_name);                    \
     }                                                                     \
     template <typename type2>                                             \
     class_name& operator=(const class_name<type2>& arg_name)
 #define _POLYNET_MOVE_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name) \
-    inline class_name& operator=(class_name&& arg_name) {                 \
-        return class_name::operator= <type1>(std::move(arg_name));        \
+    class_name& operator=(class_name&& arg_name) {                        \
+        return class_name::operator=<type1>(std::move(arg_name));         \
     }                                                                     \
     template <typename type2>                                             \
     class_name& operator=(class_name<type2>&& arg_name)
@@ -53,37 +53,37 @@ namespace pn {
         BasicSocket(const T& socket):
             socket(socket) {}
 
-        inline T get() const {
+        T get() const {
             return this->socket;
         }
 
-        inline const T& operator*() const {
+        const T& operator*() const {
             return this->socket;
         }
 
-        inline T& operator*() {
+        T& operator*() {
             return this->socket;
         }
 
-        inline const T* operator->() const {
+        const T* operator->() const {
             return &this->socket;
         }
 
-        inline T* operator->() {
+        T* operator->() {
             return &this->socket;
         }
 
-        inline operator bool() const {
+        operator bool() const {
             return this->socket.is_valid();
         }
 
         template <typename U>
-        inline bool operator==(const U& other_sock) const {
+        bool operator==(const U& other_sock) const {
             return this->socket == other_sock.socket;
         }
 
         template <typename U>
-        inline bool operator!=(const U& other_sock) const {
+        bool operator!=(const U& other_sock) const {
             return this->socket != other_sock.socket;
         }
     };
@@ -121,19 +121,19 @@ namespace pn {
             this->socket.close(/* Reset fd */ false);
         }
 
-        inline void reset() {
+        void reset() {
             this->socket.close(/* Reset fd */ false);
             this->socket = T();
         }
 
-        inline void reset(const T& socket) {
+        void reset(const T& socket) {
             if (this->socket != socket) {
                 this->socket.close(/* Reset fd */ false);
                 this->socket = socket;
             }
         }
 
-        inline T release() const {
+        T release() const {
             return std::exchange(this->socket, T());
         }
     };
@@ -223,13 +223,13 @@ namespace pn {
             decrement();
         }
 
-        inline void reset() {
+        void reset() {
             decrement();
             this->socket = T();
             control_block = new detail::ControlBlock;
         }
 
-        inline void reset(const T& socket) {
+        void reset(const T& socket) {
             if (this->socket != socket) {
                 decrement();
                 this->socket = socket;
@@ -237,7 +237,7 @@ namespace pn {
             }
         }
 
-        inline use_count_t use_count() const {
+        use_count_t use_count() const {
             std::lock_guard<std::mutex> lock(control_block->mutex);
             return control_block->use_count;
         }
@@ -346,13 +346,13 @@ namespace pn {
             decrement();
         }
 
-        inline void reset() {
+        void reset() {
             decrement();
             this->socket = T();
             control_block = nullptr;
         }
 
-        inline use_count_t use_count() const {
+        use_count_t use_count() const {
             if (control_block) {
                 std::lock_guard<std::mutex> lock(control_block->mutex);
                 return control_block->use_count;
@@ -361,11 +361,11 @@ namespace pn {
             }
         }
 
-        inline bool expired() const {
+        bool expired() const {
             return !use_count();
         }
 
-        inline SharedSocket<T> lock() const {
+        SharedSocket<T> lock() const {
             if (control_block) {
                 std::lock_guard<std::mutex> lock(control_block->mutex);
                 if (control_block->use_count) {

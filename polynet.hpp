@@ -295,7 +295,7 @@ namespace pn {
             addrlen(addrlen) {}
 
         // Don't use this if you are using bind or connect on pn::Server or pn::Client, respectively
-        inline int init(int domain, int type, int protocol) {
+        int init(int domain, int type, int protocol) {
             if ((this->fd = socket(domain, type, protocol)) == PN_INVALID_SOCKFD) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
@@ -304,7 +304,7 @@ namespace pn {
             return PN_OK;
         }
 
-        inline int setsockopt(int level, int optname, const void* optval, socklen_t optlen) {
+        int setsockopt(int level, int optname, const void* optval, socklen_t optlen) {
             if (::setsockopt(this->fd, level, optname, (const char*) optval, optlen) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
@@ -313,7 +313,7 @@ namespace pn {
             return PN_OK;
         }
 
-        inline int getsockopt(int level, int optname, void* optval, socklen_t* optlen) {
+        int getsockopt(int level, int optname, void* optval, socklen_t* optlen) {
             if (::getsockopt(this->fd, level, optname, (char*) optval, optlen) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
@@ -322,7 +322,7 @@ namespace pn {
             return PN_OK;
         }
 
-        inline int shutdown(int how) {
+        int shutdown(int how) {
             if (::shutdown(this->fd, how) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
@@ -332,7 +332,7 @@ namespace pn {
         }
 
         // By default, the closed socket file descriptor is LOST if this function executes successfully
-        inline virtual int close(bool reset_fd = true, bool validity_check = true) {
+        virtual int close(bool reset_fd = true, bool validity_check = true) {
             if (validity_check && !this->is_valid()) {
                 return PN_OK;
             }
@@ -348,19 +348,19 @@ namespace pn {
             return PN_OK;
         }
 
-        inline bool is_valid() const {
+        bool is_valid() const {
             return this->fd != PN_INVALID_SOCKFD;
         }
 
-        inline operator bool() const {
+        operator bool() const {
             return is_valid();
         }
 
-        inline bool operator==(const Socket& socket) const {
+        bool operator==(const Socket& socket) const {
             return this->fd == socket.fd;
         }
 
-        inline bool operator!=(const Socket& socket) const {
+        bool operator!=(const Socket& socket) const {
             return this->fd != socket.fd;
         }
     };
@@ -419,7 +419,7 @@ namespace pn {
             return PN_OK;
         }
 
-        inline int bind(const std::string& hostname, unsigned short port) {
+        int bind(const std::string& hostname, unsigned short port) {
             std::string str_port = std::to_string(port);
             return bind(hostname, str_port);
         }
@@ -495,7 +495,7 @@ namespace pn {
             return PN_OK;
         }
 
-        inline int connect(const std::string& hostname, unsigned short port) {
+        int connect(const std::string& hostname, unsigned short port) {
             std::string str_port = std::to_string(port);
             return connect(hostname, str_port);
         }
@@ -529,7 +529,7 @@ namespace pn {
             Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 Socket(fd, addr, addrlen) {}
 
-            virtual inline long send(const void* buf, size_t len) {
+            virtual long send(const void* buf, size_t len) {
                 long result;
                 if ((result = ::send(this->fd, (const char*) buf, len, 0)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -540,7 +540,7 @@ namespace pn {
 
             virtual long sendall(const void* buf, size_t len);
 
-            virtual inline long recv(void* buf, size_t len) {
+            virtual long recv(void* buf, size_t len) {
                 long result;
                 if ((result = ::recv(this->fd, (char*) buf, len, 0)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -549,7 +549,7 @@ namespace pn {
                 return result;
             }
 
-            virtual inline long peek(void* buf, size_t len) {
+            virtual long peek(void* buf, size_t len) {
                 long result;
                 if ((result = ::recv(this->fd, (char*) buf, len, MSG_PEEK)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -575,7 +575,7 @@ namespace pn {
             long peek(Connection& conn, void* buf, size_t len);
             long recvall(Connection& conn, void* buf, size_t len);
 
-            inline void rewind(const void* buf, size_t len) {
+            void rewind(const void* buf, size_t len) {
                 this->buf.insert(this->buf.begin(), (const char*) buf, (const char*) buf + len);
             }
         };
@@ -613,7 +613,7 @@ namespace pn {
             Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 pn::Socket(fd, addr, addrlen) {}
 
-            inline long sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
+            virtual long sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 long result;
                 if ((result = ::sendto(this->fd, (const char*) buf, len, flags, dest_addr, addrlen)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());
@@ -622,7 +622,7 @@ namespace pn {
                 return result;
             }
 
-            inline long recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
+            virtual long recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
                 long result;
                 if ((result = ::recvfrom(this->fd, (char*) buf, len, flags, src_addr, addrlen)) == PN_ERROR) {
                     detail::set_last_socket_error(detail::get_last_system_error());

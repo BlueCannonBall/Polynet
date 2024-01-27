@@ -43,7 +43,7 @@ namespace pn {
                 Connection(fd, addr, addrlen),
                 ssl(ssl) {}
 
-            inline int ssl_init(SSL_CTX* ssl_ctx) {
+            int ssl_init(SSL_CTX* ssl_ctx) {
                 if (!(this->ssl = SSL_new(ssl_ctx))) {
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
@@ -57,7 +57,7 @@ namespace pn {
                 return PN_OK;
             }
 
-            inline int ssl_accept() {
+            int ssl_accept() {
                 if (SSL_accept(ssl) <= 0) {
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
@@ -84,7 +84,7 @@ namespace pn {
                 return PN_OK;
             }
 
-            inline long send(const void* buf, size_t len) override {
+            long send(const void* buf, size_t len) override {
                 int result;
                 if ((result = SSL_write(this->ssl, buf, len)) <= 0) {
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
@@ -96,7 +96,7 @@ namespace pn {
 
             long sendall(const void* buf, size_t len) override;
 
-            inline long recv(void* buf, size_t len) override {
+            long recv(void* buf, size_t len) override {
                 int result;
                 if ((result = SSL_read(this->ssl, buf, len)) < 0) {
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
@@ -105,7 +105,7 @@ namespace pn {
                 return result;
             }
 
-            inline long peek(void* buf, size_t len) override {
+            long peek(void* buf, size_t len) override {
                 int result;
                 if ((result = SSL_peek(this->ssl, buf, len)) < 0) {
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
@@ -135,7 +135,7 @@ namespace pn {
 
             int ssl_init(const std::string& certificate_chain_file, const std::string& private_key_file, int private_key_file_type);
 
-            inline int close(bool reset = true, bool validity_check = true) override {
+            int close(bool reset = true, bool validity_check = true) override {
                 if (!validity_check || this->ssl_ctx) {
                     SSL_CTX_free(this->ssl_ctx);
                     if (reset) this->ssl_ctx = nullptr;
@@ -171,7 +171,7 @@ namespace pn {
 
             int ssl_init(const std::string& hostname, int verify_mode = SSL_VERIFY_PEER, const std::string& ca_file = {}, const std::string& ca_path = {});
 
-            inline int ssl_connect() {
+            int ssl_connect() {
                 if (SSL_connect(ssl) <= 0) {
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
