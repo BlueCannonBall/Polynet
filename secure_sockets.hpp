@@ -31,7 +31,7 @@ namespace pn {
     namespace tcp {
         class SecureConnection : public Connection {
         public:
-            SSL* ssl;
+            SSL* ssl = nullptr;
 
             SecureConnection() = default;
             SecureConnection(sockfd_t fd, SSL* ssl):
@@ -174,7 +174,7 @@ namespace pn {
 
         class SecureClient : public BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP> {
         protected:
-            SSL_CTX* ssl_ctx;
+            SSL_CTX* ssl_ctx = nullptr;
 
         private:
             using BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::ssl_accept;
