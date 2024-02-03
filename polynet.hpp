@@ -390,7 +390,7 @@ namespace pn {
                 }
 
                 {
-                    const int value = 1;
+                    static constexpr int value = 1;
                     if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)) == PN_ERROR) {
                         pn::freeaddrinfo(ai_list);
                         return PN_ERROR;
@@ -430,7 +430,7 @@ namespace pn {
             }
 
             {
-                const int value = 1;
+                static constexpr int value = 1;
                 if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)) == PN_ERROR) {
                     return PN_ERROR;
                 }
