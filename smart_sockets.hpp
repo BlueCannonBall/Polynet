@@ -379,13 +379,13 @@ namespace pn {
         }
     };
 
-    template <typename T, typename... Ts>
-    inline UniqueSocket<T> make_unique(Ts... args) {
+    template <typename T, typename... Args>
+    inline UniqueSocket<T> make_unique(Args&&... args) {
         return UniqueSocket<T>(T(args...));
     }
 
-    template <typename T, typename... Ts>
-    inline SharedSocket<T> make_shared(Ts... args) {
+    template <typename T, typename... Args>
+    inline SharedSocket<T> make_shared(Args&&... args) {
         return SharedSocket<T>(T(args...));
     }
 } // namespace pn

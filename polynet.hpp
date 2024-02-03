@@ -368,8 +368,8 @@ namespace pn {
     template <class Base, int Socktype, int Protocol>
     class BasicServer : public Base {
     public:
-        template <typename... Ts>
-        BasicServer(Ts... args):
+        template <typename... Args>
+        BasicServer(Args&&... args):
             Base(args...) {}
 
         int bind(const std::string& hostname, const std::string& port) {
@@ -452,8 +452,8 @@ namespace pn {
     template <class Base, int Socktype, int Protocol>
     class BasicClient : public Base {
     public:
-        template <typename... Ts>
-        BasicClient(Ts... args):
+        template <typename... Args>
+        BasicClient(Args&&... args):
             Base(args...) {}
 
         int connect(const std::string& hostname, const std::string& port) {
