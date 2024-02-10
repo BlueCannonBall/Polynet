@@ -110,11 +110,13 @@ namespace pn {
 #endif
                 }
 
-                if (conn.ssl_init(ssl_ctx) == PN_ERROR) {
-                    return PN_ERROR;
-                }
-                if (conn.ssl_accept() == PN_ERROR) {
-                    continue;
+                if (ssl_ctx) {
+                    if (conn.ssl_init(ssl_ctx) == PN_ERROR) {
+                        return PN_ERROR;
+                    }
+                    if (conn.ssl_accept() == PN_ERROR) {
+                        continue;
+                    }
                 }
 
                 if (!cb(conn, data)) { // Connections CANNOT be accepted while the callback is blocking

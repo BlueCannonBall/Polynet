@@ -78,13 +78,13 @@ namespace pn {
         }
 
         template <typename U>
-        bool operator==(const U& other_sock) const {
-            return socket == other_sock.socket;
+        bool operator==(const U& other_socket) const {
+            return socket == other_socket.socket;
         }
 
         template <typename U>
-        bool operator!=(const U& other_sock) const {
-            return socket != other_sock.socket;
+        bool operator!=(const U& other_socket) const {
+            return socket != other_socket.socket;
         }
     };
 
@@ -104,16 +104,16 @@ namespace pn {
         UniqueSocket() = default;
         UniqueSocket(const T& socket):
             BasicSocket<T>(socket) {}
-        _POLYNET_MOVE_CTOR_TEMPLATE(UniqueSocket, T, U, unique_sock) {
-            *this = std::move(unique_sock);
+        _POLYNET_MOVE_CTOR_TEMPLATE(UniqueSocket, T, U, unique_socket) {
+            *this = std::move(unique_socket);
         }
 
-        _POLYNET_MOVE_ASSIGN_TEMPLATE(UniqueSocket, T, U, unique_sock) {
-            if (this->socket != unique_sock.socket) {
+        _POLYNET_MOVE_ASSIGN_TEMPLATE(UniqueSocket, T, U, unique_socket) {
+            if (this->socket != unique_socket.socket) {
                 this->socket.close(/* Reset fd */ false);
-                this->socket = unique_sock.socket;
+                this->socket = unique_socket.socket;
             }
-            unique_sock.socket = U();
+            unique_socket.socket = U();
             return *this;
         }
 
@@ -176,46 +176,46 @@ namespace pn {
         SharedSocket() = default;
         SharedSocket(const T& socket):
             BasicSocket<T>(socket) {}
-        _POLYNET_COPY_CTOR_TEMPLATE(SharedSocket, T, U, shared_sock) {
-            *this = shared_sock;
+        _POLYNET_COPY_CTOR_TEMPLATE(SharedSocket, T, U, shared_socket) {
+            *this = shared_socket;
         }
-        _POLYNET_MOVE_CTOR_TEMPLATE(SharedSocket, T, U, shared_sock) {
-            *this = std::move(shared_sock);
+        _POLYNET_MOVE_CTOR_TEMPLATE(SharedSocket, T, U, shared_socket) {
+            *this = std::move(shared_socket);
         }
         template <typename U>
-        SharedSocket(UniqueSocket<U>&& unique_sock) {
-            *this = std::move(unique_sock);
+        SharedSocket(UniqueSocket<U>&& unique_socket) {
+            *this = std::move(unique_socket);
         }
 
-        _POLYNET_COPY_ASSIGN_TEMPLATE(SharedSocket, T, U, shared_sock) {
-            if (this->socket != shared_sock.socket) {
+        _POLYNET_COPY_ASSIGN_TEMPLATE(SharedSocket, T, U, shared_socket) {
+            if (this->socket != shared_socket.socket) {
                 decrement();
-                this->socket = shared_sock.socket;
-                control_block = shared_sock.control_block;
+                this->socket = shared_socket.socket;
+                control_block = shared_socket.control_block;
                 increment();
             }
             return *this;
         }
 
-        _POLYNET_MOVE_ASSIGN_TEMPLATE(SharedSocket, T, U, shared_sock) {
-            if (this->socket != shared_sock.socket) {
+        _POLYNET_MOVE_ASSIGN_TEMPLATE(SharedSocket, T, U, shared_socket) {
+            if (this->socket != shared_socket.socket) {
                 decrement();
-                this->socket = shared_sock.socket;
-                control_block = shared_sock.control_block;
+                this->socket = shared_socket.socket;
+                control_block = shared_socket.control_block;
             }
-            shared_sock.socket = U();
-            shared_sock.control_block = new detail::ControlBlock;
+            shared_socket.socket = U();
+            shared_socket.control_block = new detail::ControlBlock;
             return *this;
         }
 
         template <typename U>
-        SharedSocket& operator=(UniqueSocket<U>&& unique_sock) {
-            if (this->socket != unique_sock.socket) {
+        SharedSocket& operator=(UniqueSocket<U>&& unique_socket) {
+            if (this->socket != unique_socket.socket) {
                 decrement();
-                this->socket = unique_sock.socket;
+                this->socket = unique_socket.socket;
                 control_block = new detail::ControlBlock;
             }
-            unique_sock.socket = U();
+            unique_socket.socket = U();
             return *this;
         }
 
@@ -244,7 +244,7 @@ namespace pn {
     };
 
     template <typename T>
-    class WeakSocket : public SharedSocket<T> {
+    class WeakSocket : public BasicSocket<T> {
     protected:
         template <typename U>
         friend class WeakSocket;
@@ -281,64 +281,64 @@ namespace pn {
 
     public:
         WeakSocket() = default;
-        _POLYNET_COPY_CTOR_TEMPLATE(WeakSocket, T, U, weak_sock) {
-            *this = weak_sock;
+        _POLYNET_COPY_CTOR_TEMPLATE(WeakSocket, T, U, weak_socket) {
+            *this = weak_socket;
         }
-        _POLYNET_MOVE_CTOR_TEMPLATE(WeakSocket, T, U, weak_sock) {
-            *this = std::move(weak_sock);
-        }
-        template <typename U>
-        WeakSocket(const SharedSocket<U>& shared_sock) {
-            *this = shared_sock;
+        _POLYNET_MOVE_CTOR_TEMPLATE(WeakSocket, T, U, weak_socket) {
+            *this = std::move(weak_socket);
         }
         template <typename U>
-        WeakSocket(SharedSocket<U>&& shared_sock) {
-            *this = std::move(shared_sock);
+        WeakSocket(const SharedSocket<U>& shared_socket) {
+            *this = shared_socket;
+        }
+        template <typename U>
+        WeakSocket(SharedSocket<U>&& shared_socket) {
+            *this = std::move(shared_socket);
+        }
+
+        _POLYNET_COPY_ASSIGN_TEMPLATE(WeakSocket, T, U, weak_socket) {
+            if (this->socket != weak_socket.socket) {
+                decrement();
+                this->socket = weak_socket.socket;
+                control_block = weak_socket.control_block;
+                increment();
+            }
+            return *this;
+        }
+
+        _POLYNET_MOVE_ASSIGN_TEMPLATE(WeakSocket, T, U, weak_socket) {
+            if (this->socket != weak_socket.socket) {
+                decrement();
+                this->socket = weak_socket.socket;
+                control_block = weak_socket.control_block;
+            }
+            weak_socket.socket = U();
+            weak_socket.control_block = nullptr;
+            return *this;
         }
 
         template <typename U>
-        WeakSocket& operator=(const SharedSocket<U>& shared_sock) {
-            if (this->socket != shared_sock.socket) {
+        WeakSocket& operator=(const SharedSocket<U>& shared_socket) {
+            if (this->socket != shared_socket.socket) {
                 decrement();
-                this->socket = shared_sock.socket;
-                control_block = shared_sock.control_block;
+                this->socket = shared_socket.socket;
+                control_block = shared_socket.control_block;
                 increment();
             }
             return *this;
         }
 
         template <typename U>
-        WeakSocket& operator=(SharedSocket<U>&& shared_sock) {
-            if (this->socket != shared_sock.socket) {
+        WeakSocket& operator=(SharedSocket<U>&& shared_socket) {
+            if (this->socket != shared_socket.socket) {
                 decrement();
-                this->socket = shared_sock.socket;
-                control_block = shared_sock.control_block;
+                this->socket = shared_socket.socket;
+                control_block = shared_socket.control_block;
                 increment();
             }
-            shared_sock.decrement();
-            shared_sock.socket = U();
-            shared_sock.control_block = new detail::ControlBlock;
-            return *this;
-        }
-
-        _POLYNET_COPY_ASSIGN_TEMPLATE(WeakSocket, T, U, weak_sock) {
-            if (this->socket != weak_sock.socket) {
-                decrement();
-                this->socket = weak_sock.socket;
-                control_block = weak_sock.control_block;
-                increment();
-            }
-            return *this;
-        }
-
-        _POLYNET_MOVE_ASSIGN_TEMPLATE(WeakSocket, T, U, weak_sock) {
-            if (this->socket != weak_sock.socket) {
-                decrement();
-                this->socket = weak_sock.socket;
-                control_block = weak_sock.control_block;
-            }
-            weak_sock.socket = U();
-            weak_sock.control_block = nullptr;
+            shared_socket.decrement();
+            shared_socket.socket = U();
+            shared_socket.control_block = new detail::ControlBlock;
             return *this;
         }
 
