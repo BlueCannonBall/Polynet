@@ -2,10 +2,8 @@
 #define _POLYNET_SECURE_SOCKETS_HPP
 
 #include "polynet.hpp"
-#include <netinet/in.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
-#include <sys/socket.h>
 
 namespace pn {
     namespace detail {
