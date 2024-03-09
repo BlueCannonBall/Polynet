@@ -14,13 +14,21 @@
     class_name(class_name<type>&& arg_name, bool _same_type = false)
 #define _POLYNET_COPY_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name) \
     class_name& operator=(const class_name& arg_name) {                   \
-        return class_name::operator=<type1>(arg_name);                    \
+        if (this != &arg_name) {                                          \
+            return class_name::operator=<type1>(arg_name);                \
+        } else {                                                          \
+            return *this;                                                 \
+        }                                                                 \
     }                                                                     \
     template <typename type2>                                             \
     class_name& operator=(const class_name<type2>& arg_name)
 #define _POLYNET_MOVE_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name) \
     class_name& operator=(class_name&& arg_name) {                        \
-        return class_name::operator=<type1>(std::move(arg_name));         \
+        if (this != &arg_name) {                                          \
+            return class_name::operator=<type1>(std::move(arg_name));     \
+        } else {                                                          \
+            return *this;                                                 \
+        }                                                                 \
     }                                                                     \
     template <typename type2>                                             \
     class_name& operator=(class_name<type2>&& arg_name)
@@ -113,9 +121,7 @@ namespace pn {
                 this->socket.close(/* Reset fd */ false);
                 this->socket = unique_socket.socket;
             }
-            if (this != &unique_socket) {
-                unique_socket.socket = U();
-            }
+            unique_socket.socket = U();
             return *this;
         }
 
@@ -205,10 +211,8 @@ namespace pn {
                 this->socket = shared_socket.socket;
                 control_block = shared_socket.control_block;
             }
-            if (this != &shared_socket) {
-                shared_socket.socket = U();
-                shared_socket.control_block = new detail::ControlBlock;
-            }
+            shared_socket.socket = U();
+            shared_socket.control_block = new detail::ControlBlock;
             return *this;
         }
 
@@ -316,10 +320,8 @@ namespace pn {
                 this->socket = weak_socket.socket;
                 control_block = weak_socket.control_block;
             }
-            if (this != &weak_socket) {
-                weak_socket.socket = U();
-                weak_socket.control_block = nullptr;
-            }
+            weak_socket.socket = U();
+            weak_socket.control_block = nullptr;
             return *this;
         }
 
