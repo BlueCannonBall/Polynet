@@ -131,7 +131,11 @@ namespace pn {
 
             SSL_CTX_set_verify(ssl_ctx, verify_mode, nullptr);
             if (ca_file.empty() && ca_path.empty()) {
+#ifdef _WIN32
+                if (SSL_CTX_load_verify_store("org.openssl.winstore://") == 0) {
+#else
                 if (SSL_CTX_set_default_verify_paths(ssl_ctx) == 0) {
+#endif
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;

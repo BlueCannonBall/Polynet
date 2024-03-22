@@ -72,23 +72,15 @@ namespace pn {
             }
 
             int close(bool reset = true, bool validity_check = true) override {
-                int ret = PN_OK;
-
                 if (!validity_check || ssl) {
                     if (SSL_shutdown(ssl) < 0) {
-                        detail::set_last_ssl_error(detail::get_last_ssl_error());
-                        detail::set_last_error(PN_ESSL);
-                        ret = PN_ERROR;
+                        ERR_clear_error();
                     }
                     SSL_free(ssl);
                     if (reset) ssl = nullptr;
                 }
 
-                if (Connection::close(reset, validity_check) == PN_ERROR) {
-                    ret = PN_ERROR;
-                }
-
-                return ret;
+                return Connection::close(reset, validity_check);
             }
 
             long send(const void* buf, size_t len) override {
