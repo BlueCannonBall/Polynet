@@ -111,23 +111,15 @@ namespace pn {
         }
 
         long Connection::recvall(void* buf, size_t len) {
-#if defined(_WIN32) && _WIN32_WINNT >= _WIN32_WINNT_VISTA
-            long result;
-            if ((result = ::recv(fd, (char*) buf, len, MSG_WAITALL)) == PN_ERROR) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-            }
-            return result;
-#else
             size_t received = 0;
             while (received < len) {
                 long result;
                 if ((result = recv((char*) buf + received, len - received)) == PN_ERROR) {
-    #ifndef _WIN32
+#ifndef _WIN32
                     if (get_last_error() == PN_ESOCKET && get_last_socket_error() == EINTR) {
                         continue;
                     }
-    #endif
+#endif
 
                     if (received) {
                         break;
@@ -140,7 +132,6 @@ namespace pn {
                 received += result;
             }
             return received;
-#endif
         }
 
         long BufReceiver::recv(Connection& conn, void* buf, size_t len) {
