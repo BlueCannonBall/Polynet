@@ -151,7 +151,7 @@ namespace pn {
     inline int init(bool banner = false, T& out = std::cerr) {
         if (banner) {
 #ifdef _WIN32
-            out << "\x1b[1m+--+ +--+ |   |  | +--  +-- -----\x1b[0m\n"
+            out << "\x1b[1m+--+ +--+ |   |  | +--. +-- -----\x1b[0m\n"
                    "\x1b[1m|__| |  | |   +--| |  | |--   |  \x1b[0m\n"
                    "\x1b[1m|    +--+ +-- ___| |  | +--   |  \x1b[0m\n";
 #else
