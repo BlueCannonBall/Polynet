@@ -50,8 +50,7 @@ namespace pn {
             }
         }
         if (buf[result - 1] == '\n') {
-            buf[i] = '\0';
-            --result;
+            buf[--result] = '\0';
         }
 
         return std::string(buf, buf + result);
