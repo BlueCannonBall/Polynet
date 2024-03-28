@@ -150,9 +150,15 @@ namespace pn {
     template <typename T = std::ostream>
     inline int init(bool banner = false, T& out = std::cerr) {
         if (banner) {
+#ifdef _WIN32
+            out << "\x1b[1m+--+ +--+ |   |  | +--  +-- -----\x1b[0m\n"
+                   "\x1b[1m|__| |  | |   +--| |  | |--   |  \x1b[0m\n"
+                   "\x1b[1m|    +--+ +-- ___| |  | +--   |  \x1b[0m\n";
+#else
             out << "█▀▀█ █▀▀█ █   █  █ █▀▀▄ █▀▀ ▀▀█▀▀\n"
                    "█▄▄█ █  █ █   █▄▄█ █  █ █▀▀   █  \n"
                    "█    ▀▀▀▀ ▀▀▀ ▄▄▄█ ▀  ▀ ▀▀▀   ▀  \n";
+#endif
         }
 
 #ifdef _WIN32

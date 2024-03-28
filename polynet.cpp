@@ -35,26 +35,26 @@ namespace pn {
     std::string socket_strerror(int error) {
         char buf[1024];
 #if defined(_WIN32)
-        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        DWORD result = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr,
             error,
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            0,
             buf,
             1024,
             nullptr);
+        assert(result != 0);
 
-        for (size_t i = 0; i < 1024; ++i) {
+        for (DWORD i = 0; i < result - 1; ++i) {
             if (buf[i] == '\n') {
-                if (buf[i + 1] == '\0') {
-                    buf[i] = '\0';
-                    break;
-                } else {
-                    buf[i] = ' ';
-                }
+                buf[i] = ' ';
             }
         }
+        if (buf[result - 1] == '\n') {
+            buf[i] = '\0';
+            --result;
+        }
 
-        return buf;
+        return std::string(buf, buf + result);
 #elif defined(_GNU_SOURCE)
         return strerror_r(error, buf, 1024);
 #else
