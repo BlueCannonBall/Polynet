@@ -126,6 +126,10 @@ namespace pn {
             }
 
             long recvall(void* buf, size_t len) override;
+
+            bool is_secure() const override {
+                return ssl;
+            }
         };
 
         class SecureServer : public Server {
@@ -160,6 +164,10 @@ namespace pn {
             }
 
             int listen(const std::function<bool(connection_type&, void*)>& cb, int backlog = 128, void* data = nullptr);
+
+            bool is_secure() const override {
+                return ssl_ctx;
+            }
         };
 
         class SecureClient : public BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP> {
@@ -189,6 +197,10 @@ namespace pn {
                     return PN_ERROR;
                 }
                 return PN_OK;
+            }
+
+            bool is_secure() const override {
+                return ssl && ssl_ctx;
             }
         };
     } // namespace tcp
