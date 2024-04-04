@@ -388,6 +388,9 @@ namespace pn {
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
             hints.ai_protocol = Protocol;
+#ifdef AI_IDN
+            hints.ai_flags = AI_IDN;
+#endif
 
             if (getaddrinfo(hostname, port, &hints, &ai_list) == PN_ERROR) {
                 return PN_ERROR;
@@ -472,6 +475,9 @@ namespace pn {
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
             hints.ai_protocol = Protocol;
+#ifdef AI_IDN
+            hints.ai_flags = AI_IDN;
+#endif
 
             if (getaddrinfo(hostname, port, &hints, &ai_list) == PN_ERROR) {
                 return PN_ERROR;
