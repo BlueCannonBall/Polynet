@@ -42,7 +42,7 @@ namespace pn {
             buf,
             1024,
             nullptr);
-        assert(result != 0);
+        assert(result);
 
         for (DWORD i = 0; i < result - 1; ++i) {
             if (buf[i] == '\n') {
