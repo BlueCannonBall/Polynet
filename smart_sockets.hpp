@@ -162,7 +162,7 @@ namespace pn {
 
         void increment() {
             std::lock_guard<std::mutex> lock(control_block->mutex);
-            control_block->use_count++;
+            ++control_block->use_count;
         }
 
         void decrement() {
@@ -268,7 +268,7 @@ namespace pn {
         void increment() {
             if (control_block) {
                 std::lock_guard<std::mutex> lock(control_block->mutex);
-                control_block->weak_use_count++;
+                ++control_block->weak_use_count;
             }
         }
 
@@ -378,7 +378,7 @@ namespace pn {
                 std::lock_guard<std::mutex> lock(control_block->mutex);
                 if (control_block->use_count) {
                     SharedSocket<T> ret(this->socket, control_block);
-                    control_block->use_count++;
+                    ++control_block->use_count;
                     return ret;
                 }
             }
