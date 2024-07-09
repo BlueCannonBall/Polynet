@@ -41,6 +41,7 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <utility>
 #if __has_include(<endian.h>)
     #include <endian.h>
 #elif __has_include(<machine/endian.h>)
@@ -380,7 +381,7 @@ namespace pn {
     public:
         template <typename... Args>
         BasicServer(Args&&... args):
-            Base(args...) {}
+            Base(std::forward<Args>(args)...) {}
 
         int bind(const std::string& hostname, const std::string& port) {
             struct addrinfo* ai_list;
@@ -467,7 +468,7 @@ namespace pn {
     public:
         template <typename... Args>
         BasicClient(Args&&... args):
-            Base(args...) {}
+            Base(std::forward<Args>(args)...) {}
 
         int connect(const std::string& hostname, const std::string& port) {
             struct addrinfo* ai_list;

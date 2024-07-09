@@ -389,12 +389,12 @@ namespace pn {
 
     template <typename T, typename... Args>
     inline UniqueSocket<T> make_unique(Args&&... args) {
-        return UniqueSocket<T>(T(args...));
+        return UniqueSocket<T>(T(std::forward(args)...));
     }
 
     template <typename T, typename... Args>
     inline SharedSocket<T> make_shared(Args&&... args) {
-        return SharedSocket<T>(T(args...));
+        return SharedSocket<T>(T(std::forward(args)...));
     }
 } // namespace pn
 
