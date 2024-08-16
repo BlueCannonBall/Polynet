@@ -25,6 +25,7 @@ namespace pn {
 
     private:
         // Some of std::basic_string_view's member functions are incompatible with our guarantee of null-termination
+        using std::basic_string_view<CharT, Traits>::substr;
         using std::basic_string_view<CharT, Traits>::remove_suffix;
     };
 
