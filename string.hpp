@@ -1,7 +1,8 @@
 #ifndef _POLYNET_STRING_HPP
 #define _POLYNET_STRING_HPP
 
-#include <cstddef>
+#include <memory>
+#include <stddef.h>
 #include <string>
 #include <string_view>
 
@@ -14,19 +15,26 @@ namespace pn {
             std::basic_string_view<CharT, Traits>() {}
         BasicStringView(const CharT* str):
             std::basic_string_view<CharT, Traits>(str) {}
-        BasicStringView(std::nullptr_t) = delete;
+        BasicStringView(decltype(nullptr)) = delete;
         template <typename T>
         BasicStringView(const T& str):
             BasicStringView(str.c_str()) {}
 
-        typename std::basic_string_view<CharT, Traits>::const_pointer c_str() const {
+        const CharT* c_str() const {
             return this->data();
         }
 
-    private:
-        // Some of std::basic_string_view's member functions are incompatible with our guarantee of null-termination
-        using std::basic_string_view<CharT, Traits>::substr;
-        using std::basic_string_view<CharT, Traits>::remove_suffix;
+        template <typename Alloc = std::allocator<CharT>>
+        std::basic_string<CharT, Traits, Alloc> substr(size_t pos = 0, size_t count = std::basic_string<CharT, Traits>::npos) const {
+            auto ret = std::basic_string_view<CharT, Traits>::substr(pos, count);
+            return std::basic_string<CharT, Traits, Alloc>(ret.begin(), ret.end());
+        }
+
+        template <typename Alloc = std::allocator<CharT>>
+        std::basic_string<CharT, Traits, Alloc> remove_suffix(size_t count) const {
+            auto ret = std::basic_string_view<CharT, Traits>::remove_suffix(count);
+            return std::basic_string<CharT, Traits, Alloc>(ret.begin(), ret.end());
+        }
     };
 
     using StringView = BasicStringView<char>;
