@@ -1,8 +1,8 @@
 #include "polynet.hpp"
 #include "secure_sockets.hpp"
 #include <algorithm>
-#include <cassert>
-#include <cstring>
+#include <assert.h>
+#include <string.h>
 
 namespace pn {
     namespace detail {

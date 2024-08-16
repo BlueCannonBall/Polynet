@@ -33,15 +33,15 @@
 #endif
 
 // Other includes
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
 #include <functional>
 #include <iostream>
 #include <ostream>
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 #if __has_include(<endian.h>)
     #include <endian.h>
 #elif __has_include(<machine/endian.h>)
