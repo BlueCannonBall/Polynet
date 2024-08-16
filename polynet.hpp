@@ -33,6 +33,7 @@
 #endif
 
 // Other includes
+#include "string.hpp"
 #include <functional>
 #include <iostream>
 #include <ostream>
@@ -225,7 +226,7 @@ namespace pn {
 
     std::string universal_strerror(int error = get_last_error());
 
-    inline int getaddrinfo(const std::string& hostname, const std::string& port, const struct addrinfo* hints, struct addrinfo** ret) {
+    inline int getaddrinfo(StringView hostname, StringView port, const struct addrinfo* hints, struct addrinfo** ret) {
         int result;
         if ((result = ::getaddrinfo(hostname.c_str(), port.c_str(), hints, ret)) != PN_OK) {
             detail::set_last_gai_error(result);
@@ -235,7 +236,7 @@ namespace pn {
         return result;
     }
 
-    inline int getaddrinfo(const std::string& hostname, unsigned short port, const struct addrinfo* hints, struct addrinfo** ret) {
+    inline int getaddrinfo(StringView hostname, unsigned short port, const struct addrinfo* hints, struct addrinfo** ret) {
         std::string str_port = std::to_string(port);
         return getaddrinfo(hostname, str_port, hints, ret);
     }
@@ -258,7 +259,7 @@ namespace pn {
         return result;
     }
 
-    inline int inet_pton(int af, const std::string& src, void* ret) {
+    inline int inet_pton(int af, StringView src, void* ret) {
         int result;
         if ((result = ::inet_pton(af, src.c_str(), ret)) == 0) {
             detail::set_last_error(PN_EPTON);
@@ -383,7 +384,7 @@ namespace pn {
         BasicServer(Args&&... args):
             Base(std::forward<Args>(args)...) {}
 
-        int bind(const std::string& hostname, const std::string& port) {
+        int bind(StringView hostname, StringView port) {
             struct addrinfo* ai_list;
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
@@ -433,7 +434,7 @@ namespace pn {
             return PN_OK;
         }
 
-        int bind(const std::string& hostname, unsigned short port) {
+        int bind(StringView hostname, unsigned short port) {
             std::string str_port = std::to_string(port);
             return bind(hostname, str_port);
         }
@@ -470,7 +471,7 @@ namespace pn {
         BasicClient(Args&&... args):
             Base(std::forward<Args>(args)...) {}
 
-        int connect(const std::string& hostname, const std::string& port) {
+        int connect(StringView hostname, StringView port) {
             struct addrinfo* ai_list;
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
@@ -512,7 +513,7 @@ namespace pn {
             return PN_OK;
         }
 
-        int connect(const std::string& hostname, unsigned short port) {
+        int connect(StringView hostname, unsigned short port) {
             std::string str_port = std::to_string(port);
             return connect(hostname, str_port);
         }

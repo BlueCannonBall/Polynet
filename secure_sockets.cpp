@@ -48,7 +48,7 @@ namespace pn {
             }
         }
 
-        int SecureServer::ssl_init(const std::string& certificate_chain_file, const std::string& private_key_file, int private_key_file_type) {
+        int SecureServer::ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type) {
             if (!(ssl_ctx = SSL_CTX_new(TLS_server_method()))) {
                 detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
@@ -122,7 +122,7 @@ namespace pn {
             return PN_OK;
         }
 
-        int SecureClient::ssl_init(const std::string& hostname, int verify_mode, const std::string& ca_file, const std::string& ca_path) {
+        int SecureClient::ssl_init(StringView hostname, int verify_mode, StringView ca_file, StringView ca_path) {
             if (!(ssl_ctx = SSL_CTX_new(TLS_client_method()))) {
                 detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);

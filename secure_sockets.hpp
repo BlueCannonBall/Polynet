@@ -148,7 +148,7 @@ namespace pn {
                 Server(fd, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
 
-            int ssl_init(const std::string& certificate_chain_file, const std::string& private_key_file, int private_key_file_type);
+            int ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type);
 
             int close(bool reset = true, bool validity_check = true) override {
                 if (!validity_check || ssl_ctx) {
@@ -188,7 +188,7 @@ namespace pn {
                 BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, ssl, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
 
-            int ssl_init(const std::string& hostname, int verify_mode = SSL_VERIFY_PEER, const std::string& ca_file = {}, const std::string& ca_path = {});
+            int ssl_init(StringView hostname, int verify_mode = SSL_VERIFY_PEER, StringView ca_file = {}, StringView ca_path = {});
 
             int ssl_connect() {
                 if (SSL_connect(ssl) <= 0) {
