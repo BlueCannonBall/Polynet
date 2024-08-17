@@ -11,9 +11,8 @@ namespace pn {
     template <typename CharT, typename Traits = std::char_traits<CharT>>
     class BasicStringView : public std::basic_string_view<CharT, Traits> {
     public:
-        BasicStringView():
-            std::basic_string_view<CharT, Traits>() {}
-        BasicStringView(const CharT* str):
+        constexpr BasicStringView() = default;
+        constexpr BasicStringView(const CharT* str):
             std::basic_string_view<CharT, Traits>(str) {}
         BasicStringView(decltype(nullptr)) = delete;
         template <typename T>
