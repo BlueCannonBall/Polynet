@@ -15,7 +15,7 @@
 #define _POLYNET_COPY_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name) \
     class_name& operator=(const class_name& arg_name) {                   \
         if (this != &arg_name) {                                          \
-            return class_name::operator=<type1>(arg_name);                \
+            return class_name::operator= <type1>(arg_name);               \
         } else {                                                          \
             return *this;                                                 \
         }                                                                 \
@@ -25,7 +25,7 @@
 #define _POLYNET_MOVE_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name) \
     class_name& operator=(class_name&& arg_name) {                        \
         if (this != &arg_name) {                                          \
-            return class_name::operator=<type1>(std::move(arg_name));     \
+            return class_name::operator= <type1>(std::move(arg_name));    \
         } else {                                                          \
             return *this;                                                 \
         }                                                                 \
