@@ -17,7 +17,7 @@ namespace pn {
         BasicStringView(decltype(nullptr)) = delete;
         template <typename T>
         BasicStringView(const T& str):
-            BasicStringView(str.c_str()) {}
+            std::basic_string_view<CharT, Traits>(str.c_str(), str.size()) {}
 
         const CharT* c_str() const {
             return this->data();
