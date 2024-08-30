@@ -23,8 +23,7 @@ namespace pn {
             return this->data();
         }
 
-        template <typename Alloc = std::allocator<CharT>>
-        std::basic_string<CharT, Traits, Alloc> substr(size_t pos = 0) const {
+        std::basic_string_view<CharT, Traits> substr(size_t pos = 0) const {
             return std::basic_string_view<CharT, Traits>::substr(pos);
         }
 
