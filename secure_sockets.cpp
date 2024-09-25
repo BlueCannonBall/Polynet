@@ -105,6 +105,10 @@ namespace pn {
 #endif
                 }
 
+                if (ssl_ctx && conn.ssl_init(ssl_ctx) == PN_ERROR) {
+                    return PN_ERROR;
+                }
+
                 if (!cb(conn, data)) { // Connections CANNOT be accepted while the callback is blocking
                     break;
                 }
