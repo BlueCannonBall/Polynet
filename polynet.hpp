@@ -344,7 +344,7 @@ namespace pn {
         }
 
         // By default, the closed socket file descriptor is LOST if this function executes successfully
-        virtual int close(int protocol_layers = PN_PROTOCOL_LAYER_ALL, bool reset = true) {
+        virtual int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_ALL) {
             if (!is_valid()) {
                 return PN_OK;
             }

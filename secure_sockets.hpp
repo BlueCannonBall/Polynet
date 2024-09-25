@@ -74,7 +74,7 @@ namespace pn {
                 return PN_OK;
             }
 
-            int close(int protocol_layers = PN_PROTOCOL_LAYER_ALL, bool reset = true) override {
+            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_ALL) override {
                 if (ssl) {
                     if (protocol_layers & PN_PROTOCOL_LAYER_SSL && SSL_shutdown(ssl) < 0) {
                         ERR_clear_error();
@@ -82,7 +82,7 @@ namespace pn {
                     SSL_free(ssl);
                     if (reset) ssl = nullptr;
                 }
-                return Connection::close(protocol_layers, reset);
+                return Connection::close(reset, protocol_layers);
             }
 
             long send(const void* buf, size_t len) override {
@@ -152,12 +152,12 @@ namespace pn {
 
             int ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type);
 
-            int close(int protocol_layers = PN_PROTOCOL_LAYER_ALL, bool reset = true) override {
+            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_ALL) override {
                 if (ssl_ctx) {
                     SSL_CTX_free(ssl_ctx);
                     if (reset) ssl_ctx = nullptr;
                 }
-                return Server::close(protocol_layers, reset);
+                return Server::close(reset, protocol_layers);
             }
 
             int listen(const std::function<bool(connection_type&, void*)>& cb, int backlog = 128, void* data = nullptr);
