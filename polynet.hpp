@@ -96,8 +96,9 @@
 #endif
 
 // Protocol layers
-#define PN_PROTOCOL_LAYER_ALL    ~0
-#define PN_PROTOCOL_LAYER_SYSTEM 1
+#define PN_PROTOCOL_LAYER_ALL    0x0000FFFF // The lower half of the protocol layers bitmask is reserved
+#define PN_PROTOCOL_LAYER_SYSTEM 1          // for protocol layers that are closed by default, while the upper
+                                            // half is for those that aren't
 
 // Errors
 #define PN_ESUCCESS  0
