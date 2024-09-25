@@ -95,6 +95,10 @@
     #endif
 #endif
 
+// Protocol layers
+#define PN_PROTOCOL_LAYER_ALL    ~0
+#define PN_PROTOCOL_LAYER_SYSTEM 1
+
 // Errors
 #define PN_ESUCCESS  0
 #define PN_ESOCKET   1
@@ -340,16 +344,16 @@ namespace pn {
         }
 
         // By default, the closed socket file descriptor is LOST if this function executes successfully
-        virtual int close(bool reset_fd = true, bool validity_check = true) {
-            if (validity_check && !is_valid()) {
+        virtual int close(int protocol_layers = PN_PROTOCOL_LAYER_ALL, bool reset = true) {
+            if (!is_valid()) {
                 return PN_OK;
             }
 
-            if (detail::closesocket(fd) == PN_ERROR) {
+            if (protocol_layers & PN_PROTOCOL_LAYER_SYSTEM && detail::closesocket(fd) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
-            } else if (reset_fd) {
+            } else if (reset) {
                 fd = PN_INVALID_SOCKFD;
             }
 

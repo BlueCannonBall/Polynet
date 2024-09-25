@@ -5,6 +5,9 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+// Protocol layers
+#define PN_PROTOCOL_LAYER_SSL (1 << 1)
+
 namespace pn {
     namespace detail {
         extern thread_local unsigned long last_ssl_error;
@@ -71,16 +74,15 @@ namespace pn {
                 return PN_OK;
             }
 
-            int close(bool reset = true, bool validity_check = true) override {
-                if (!validity_check || ssl) {
-                    if (SSL_shutdown(ssl) < 0) {
+            int close(int protocol_layers = PN_PROTOCOL_LAYER_ALL, bool reset = true) override {
+                if (ssl) {
+                    if (protocol_layers & PN_PROTOCOL_LAYER_SSL && SSL_shutdown(ssl) < 0) {
                         ERR_clear_error();
                     }
                     SSL_free(ssl);
                     if (reset) ssl = nullptr;
                 }
-
-                return Connection::close(reset, validity_check);
+                return Connection::close(protocol_layers, reset);
             }
 
             long send(const void* buf, size_t len) override {
@@ -150,17 +152,12 @@ namespace pn {
 
             int ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type);
 
-            int close(bool reset = true, bool validity_check = true) override {
-                if (!validity_check || ssl_ctx) {
+            int close(int protocol_layers = PN_PROTOCOL_LAYER_ALL, bool reset = true) override {
+                if (ssl_ctx) {
                     SSL_CTX_free(ssl_ctx);
                     if (reset) ssl_ctx = nullptr;
                 }
-
-                if (Server::close(reset, validity_check) == PN_ERROR) {
-                    return PN_ERROR;
-                }
-
-                return PN_OK;
+                return Server::close(protocol_layers, reset);
             }
 
             int listen(const std::function<bool(connection_type&, void*)>& cb, int backlog = 128, void* data = nullptr);
