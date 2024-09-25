@@ -5,14 +5,36 @@
 #include <stddef.h>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 namespace pn {
     // A derivative of std::basic_string_view that is always null-terminated
     template <typename CharT, typename Traits = std::char_traits<CharT>>
     class BasicStringView : public std::basic_string_view<CharT, Traits> {
+    protected:
+        static constexpr const CharT* empty_string() {
+            static_assert(
+                std::is_same_v<CharT, char> ||
+                    std::is_same_v<CharT, wchar_t> ||
+                    std::is_same_v<CharT, char16_t> ||
+                    std::is_same_v<CharT, char32_t>,
+                "CharT must be char, wchar_t, char16_t, or char32_t");
+
+            if constexpr (std::is_same_v<CharT, char>) {
+                return "";
+            } else if constexpr (std::is_same_v<CharT, wchar_t>) {
+                return L"";
+            } else if constexpr (std::is_same_v<CharT, char16_t>) {
+                return u"";
+            } else if constexpr (std::is_same_v<CharT, char32_t>) {
+                return U"";
+            } else {
+                return nullptr;
+            }
+        }
+
     public:
-        constexpr BasicStringView() = default;
-        constexpr BasicStringView(const CharT* str):
+        constexpr BasicStringView(const CharT* str = empty_string()):
             std::basic_string_view<CharT, Traits>(str) {}
         BasicStringView(decltype(nullptr)) = delete;
         template <typename T>
