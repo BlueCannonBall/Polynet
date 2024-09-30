@@ -196,6 +196,21 @@ namespace pn {
                 return PN_OK;
             }
 
+            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_ALL) override {
+                if (ssl) {
+                    if (protocol_layers & PN_PROTOCOL_LAYER_SSL && SSL_shutdown(ssl) < 0) {
+                        ERR_clear_error();
+                    }
+                    SSL_free(ssl);
+                    if (reset) ssl = nullptr;
+                }
+                if (ssl_ctx) {
+                    SSL_CTX_free(ssl_ctx);
+                    if (reset) ssl_ctx = nullptr;
+                }
+                return Connection::close(reset, protocol_layers);
+            }
+
             bool is_secure() const override {
                 return ssl && ssl_ctx;
             }
