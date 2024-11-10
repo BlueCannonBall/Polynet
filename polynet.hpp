@@ -96,9 +96,9 @@
 #endif
 
 // Protocol layers
-#define PN_PROTOCOL_LAYER_ALL    0x0000FFFF // The lower half of the protocol layers bitmask is reserved
-#define PN_PROTOCOL_LAYER_SYSTEM 1          // for protocol layers that are closed by default, while the upper
-                                            // half is for those that aren't
+#define PN_PROTOCOL_LAYER_DEFAULT 0x0000FFFF // The lower half of the protocol layers bitmask is reserved
+#define PN_PROTOCOL_LAYER_SYSTEM  1          // for protocol layers that are closed by default, while the upper
+                                             // half is for those that aren't
 
 // Errors
 #define PN_ESUCCESS  0
@@ -345,7 +345,7 @@ namespace pn {
         }
 
         // By default, the closed socket file descriptor is LOST if this function executes successfully
-        virtual int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_ALL) {
+        virtual int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) {
             if (!is_valid()) {
                 return PN_OK;
             }

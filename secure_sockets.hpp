@@ -74,7 +74,7 @@ namespace pn {
                 return PN_OK;
             }
 
-            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_ALL) override {
+            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl) {
                     if (protocol_layers & PN_PROTOCOL_LAYER_SSL && SSL_shutdown(ssl) < 0) {
                         ERR_clear_error();
@@ -152,7 +152,7 @@ namespace pn {
 
             int ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type);
 
-            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_ALL) override {
+            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl_ctx) {
                     SSL_CTX_free(ssl_ctx);
                     if (reset) ssl_ctx = nullptr;
@@ -196,7 +196,7 @@ namespace pn {
                 return PN_OK;
             }
 
-            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_ALL) override {
+            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl) {
                     if (protocol_layers & PN_PROTOCOL_LAYER_SSL && SSL_shutdown(ssl) < 0) {
                         ERR_clear_error();
