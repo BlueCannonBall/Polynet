@@ -50,7 +50,7 @@ namespace pn {
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
                 }
-                if (SSL_set_fd(ssl, fd) == 0) {
+                if (!SSL_set_fd(ssl, fd)) {
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
@@ -87,13 +87,13 @@ namespace pn {
 
             long send(const void* buf, size_t len) override {
                 if (ssl) {
-                    int result;
-                    if ((result = SSL_write(ssl, buf, len)) <= 0) {
+                    if (int result = SSL_write(ssl, buf, len); result <= 0) {
                         detail::set_last_ssl_error(detail::get_last_ssl_error());
                         detail::set_last_error(PN_ESSL);
                         return PN_ERROR;
+                    } else {
+                        return result;
                     }
-                    return result;
                 } else {
                     return Connection::send(buf, len);
                 }

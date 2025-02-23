@@ -169,21 +169,19 @@ namespace pn {
         }
 
 #ifdef _WIN32
-        int result;
-        if ((result = WSAStartup(MAKEWORD(2, 2), &wsa_data)) != PN_OK) {
+        if (int result = WSAStartup(MAKEWORD(2, 2), &wsa_data); result != PN_OK) {
             detail::set_last_socket_error(result);
             detail::set_last_error(PN_ESOCKET);
             return PN_ERROR;
         }
-        return result;
 #else
         if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
             detail::set_last_socket_error(detail::get_last_system_error());
             detail::set_last_error(PN_ESOCKET);
             return PN_ERROR;
         }
-        return PN_OK;
 #endif
+        return PN_OK;
     }
 
     inline int quit() {
@@ -232,13 +230,12 @@ namespace pn {
     std::string universal_strerror(int error = get_last_error());
 
     inline int getaddrinfo(StringView hostname, StringView port, const struct addrinfo* hints, struct addrinfo** ret) {
-        int result;
-        if ((result = ::getaddrinfo(hostname.c_str(), port.c_str(), hints, ret)) != PN_OK) {
+        if (int result = ::getaddrinfo(hostname.c_str(), port.c_str(), hints, ret); result != PN_OK) {
             detail::set_last_gai_error(result);
             detail::set_last_error(PN_EAI);
             return PN_ERROR;
         }
-        return result;
+        return PN_OK;
     }
 
     inline int getaddrinfo(StringView hostname, unsigned short port, const struct addrinfo* hints, struct addrinfo** ret) {
@@ -251,22 +248,20 @@ namespace pn {
     }
 
     inline int getnameinfo(const struct sockaddr* sockaddr, socklen_t addrlen, std::string& hostname, std::string& port, int flags) {
-        int result;
         hostname.resize(NI_MAXHOST);
         port.resize(NI_MAXSERV);
-        if ((result = ::getnameinfo(sockaddr, addrlen, &hostname[0], NI_MAXHOST, &port[0], NI_MAXSERV, flags)) != PN_OK) {
+        if (int result = ::getnameinfo(sockaddr, addrlen, &hostname[0], NI_MAXHOST, &port[0], NI_MAXSERV, flags); result != PN_OK) {
             detail::set_last_gai_error(result);
             detail::set_last_error(PN_EAI);
             return PN_ERROR;
         }
-        hostname.resize(strlen(hostname.c_str()));
-        port.resize(strlen(port.c_str()));
-        return result;
+        hostname.resize(strlen(hostname.data()));
+        port.resize(strlen(port.data()));
+        return PN_OK;
     }
 
     inline int inet_pton(int af, StringView src, void* ret) {
-        int result;
-        if ((result = ::inet_pton(af, src.c_str(), ret)) == 0) {
+        if (int result = ::inet_pton(af, src.c_str(), ret); !result) {
             detail::set_last_error(PN_EPTON);
             return PN_ERROR;
         } else if (result == -1) {
@@ -354,10 +349,8 @@ namespace pn {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
-            } else if (reset) {
-                fd = PN_INVALID_SOCKFD;
             }
-
+            if (reset) fd = PN_INVALID_SOCKFD;
             return PN_OK;
         }
 

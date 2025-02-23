@@ -125,7 +125,7 @@ namespace pn {
                     } else {
                         return PN_ERROR;
                     }
-                } else if (result == 0) {
+                } else if (!result) {
                     break;
                 }
                 received += result;
