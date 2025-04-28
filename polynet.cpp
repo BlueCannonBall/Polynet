@@ -92,12 +92,6 @@ namespace pn {
             while (sent < len) {
                 long result;
                 if ((result = send((const char*) buf + sent, len - sent)) == PN_ERROR) {
-#ifndef _WIN32
-                    if (get_last_error() == PN_ESOCKET && get_last_socket_error() == EINTR) {
-                        continue;
-                    }
-#endif
-
                     if (sent) {
                         break;
                     } else {
@@ -114,12 +108,6 @@ namespace pn {
             while (received < len) {
                 long result;
                 if ((result = recv((char*) buf + received, len - received)) == PN_ERROR) {
-#ifndef _WIN32
-                    if (get_last_error() == PN_ESOCKET && get_last_socket_error() == EINTR) {
-                        continue;
-                    }
-#endif
-
                     if (received) {
                         break;
                     } else {

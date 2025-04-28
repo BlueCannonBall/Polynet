@@ -546,32 +546,56 @@ namespace pn {
                 Socket(fd, addr, addrlen) {}
 
             virtual long send(const void* buf, size_t len) {
-                long result;
-                if ((result = ::send(fd, (const char*) buf, len, 0)) == PN_ERROR) {
-                    detail::set_last_socket_error(detail::get_last_system_error());
-                    detail::set_last_error(PN_ESOCKET);
+                for (;;) {
+                    long result;
+                    if ((result = ::send(fd, (const char*) buf, len, 0)) == PN_ERROR) {
+#ifndef _WIN32
+                        if (detail::get_last_system_error() == EINTR) {
+                            continue;
+                        }
+#endif
+
+                        detail::set_last_socket_error(detail::get_last_system_error());
+                        detail::set_last_error(PN_ESOCKET);
+                    }
+                    return result;
                 }
-                return result;
             }
 
             virtual long sendall(const void* buf, size_t len);
 
             virtual long recv(void* buf, size_t len) {
-                long result;
-                if ((result = ::recv(fd, (char*) buf, len, 0)) == PN_ERROR) {
-                    detail::set_last_socket_error(detail::get_last_system_error());
-                    detail::set_last_error(PN_ESOCKET);
+                for (;;) {
+                    long result;
+                    if ((result = ::recv(fd, (char*) buf, len, 0)) == PN_ERROR) {
+#ifndef _WIN32
+                        if (detail::get_last_system_error() == EINTR) {
+                            continue;
+                        }
+#endif
+
+                        detail::set_last_socket_error(detail::get_last_system_error());
+                        detail::set_last_error(PN_ESOCKET);
+                    }
+                    return result;
                 }
-                return result;
             }
 
             virtual long peek(void* buf, size_t len) {
-                long result;
-                if ((result = ::recv(fd, (char*) buf, len, MSG_PEEK)) == PN_ERROR) {
-                    detail::set_last_socket_error(detail::get_last_system_error());
-                    detail::set_last_error(PN_ESOCKET);
+                for (;;) {
+                    long result;
+                    if ((result = ::recv(fd, (char*) buf, len, MSG_PEEK)) == PN_ERROR) {
+#ifndef _WIN32
+                        if (detail::get_last_system_error() == EINTR) {
+                            continue;
+                        }
+#endif
+
+                        detail::set_last_socket_error(detail::get_last_system_error());
+                        detail::set_last_error(PN_ESOCKET);
+                    }
+                    return result;
                 }
-                return result;
             }
 
             virtual long recvall(void* buf, size_t len);
@@ -630,21 +654,37 @@ namespace pn {
                 pn::Socket(fd, addr, addrlen) {}
 
             virtual long sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
-                long result;
-                if ((result = ::sendto(fd, (const char*) buf, len, flags, dest_addr, addrlen)) == PN_ERROR) {
-                    detail::set_last_socket_error(detail::get_last_system_error());
-                    detail::set_last_error(PN_ESOCKET);
+                for (;;) {
+                    long result;
+                    if ((result = ::sendto(fd, (const char*) buf, len, flags, dest_addr, addrlen)) == PN_ERROR) {
+#ifndef _WIN32
+                        if (detail::get_last_system_error() == EINTR) {
+                            continue;
+                        }
+#endif
+
+                        detail::set_last_socket_error(detail::get_last_system_error());
+                        detail::set_last_error(PN_ESOCKET);
+                    }
+                    return result;
                 }
-                return result;
             }
 
             virtual long recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
-                long result;
-                if ((result = ::recvfrom(fd, (char*) buf, len, flags, src_addr, addrlen)) == PN_ERROR) {
-                    detail::set_last_socket_error(detail::get_last_system_error());
-                    detail::set_last_error(PN_ESOCKET);
+                for (;;) {
+                    long result;
+                    if ((result = ::recvfrom(fd, (char*) buf, len, flags, src_addr, addrlen)) == PN_ERROR) {
+#ifndef _WIN32
+                        if (detail::get_last_system_error() == EINTR) {
+                            continue;
+                        }
+#endif
+
+                        detail::set_last_socket_error(detail::get_last_system_error());
+                        detail::set_last_error(PN_ESOCKET);
+                    }
+                    return result;
                 }
-                return result;
             }
         };
 
