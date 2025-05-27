@@ -9,8 +9,7 @@
         #define _WIN32_WINNT _WIN32_WINNT_WIN8 // This is a reasonable default
     #endif
 
-    #include <basetsd.h>
-    #include <windef.h>
+    #include <windows.h>
     #include <winsock2.h>
     #include <ws2tcpip.h>
 
