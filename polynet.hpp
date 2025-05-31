@@ -5,17 +5,18 @@
 #ifdef _WIN32
     #define WIN32_LEAN_AND_MEAN
 
+    #ifndef WINVER
+        #define WINVER 0x0A00
+    #endif
     #ifndef _WIN32_WINNT
-        #define _WIN32_WINNT _WIN32_WINNT_WIN8 // This is a reasonable default
+        #define _WIN32_WINNT 0x0A00
     #endif
 
     #include <windows.h>
     #include <winsock2.h>
     #include <ws2tcpip.h>
 
-    #ifdef _MSC_VER
-        #pragma comment(lib, "ws2_32.lib")
-    #endif
+    #pragma comment(lib, "ws2_32.lib")
 #else
     #include <arpa/inet.h>
     #include <errno.h>
