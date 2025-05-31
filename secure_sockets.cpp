@@ -125,20 +125,22 @@ namespace pn {
             }
 
             SSL_CTX_set_verify(ssl_ctx, verify_mode, nullptr);
-            if (ca_file.empty() && ca_path.empty()) {
+            if (verify_mode != SSL_VERIFY_NONE) {
+                if (ca_file.empty() && ca_path.empty()) {
 #ifdef _WIN32
-                if (!SSL_CTX_load_verify_store(ssl_ctx, "org.openssl.winstore://")) {
+                    if (!SSL_CTX_load_verify_store(ssl_ctx, "org.openssl.winstore://")) {
 #else
-                if (!SSL_CTX_set_default_verify_paths(ssl_ctx)) {
+                    if (!SSL_CTX_set_default_verify_paths(ssl_ctx)) {
 #endif
+                        detail::set_last_ssl_error(detail::get_last_ssl_error());
+                        detail::set_last_error(PN_ESSL);
+                        return PN_ERROR;
+                    }
+                } else if (!SSL_CTX_load_verify_locations(ssl_ctx, ca_file.empty() ? nullptr : ca_file.c_str(), ca_path.empty() ? nullptr : ca_path.c_str())) {
                     detail::set_last_ssl_error(detail::get_last_ssl_error());
                     detail::set_last_error(PN_ESSL);
                     return PN_ERROR;
                 }
-            } else if (!SSL_CTX_load_verify_locations(ssl_ctx, ca_file.empty() ? nullptr : ca_file.c_str(), ca_path.empty() ? nullptr : ca_path.c_str())) {
-                detail::set_last_ssl_error(detail::get_last_ssl_error());
-                detail::set_last_error(PN_ESSL);
-                return PN_ERROR;
             }
 
             if (BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::ssl_init(ssl_ctx) == PN_ERROR) {
