@@ -15,6 +15,24 @@ namespace pn {
     WSADATA wsa_data;
 #endif
 
+    int quit() {
+#ifdef _WIN32
+        if (WSACleanup() == PN_ERROR) {
+            detail::set_last_socket_error(detail::get_last_system_error());
+            detail::set_last_error(PN_ESOCKET);
+            return PN_ERROR;
+        }
+        return PN_OK;
+#else
+        if (signal(SIGPIPE, SIG_DFL) == SIG_ERR) {
+            detail::set_last_socket_error(detail::get_last_system_error());
+            detail::set_last_error(PN_ESOCKET);
+            return PN_ERROR;
+        }
+        return PN_OK;
+#endif
+    }
+
     std::string strerror(int error) {
         const static std::string error_strings[] = {
             "Success",                                       // PN_ESUCCESS
@@ -34,7 +52,7 @@ namespace pn {
 
     std::string socket_strerror(int error) {
         char buf[1024];
-#if defined(_WIN32)
+#ifdef _WIN32
         DWORD result = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr,
             error,

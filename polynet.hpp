@@ -184,23 +184,7 @@ namespace pn {
         return PN_OK;
     }
 
-    inline int quit() {
-#ifdef _WIN32
-        if (WSACleanup() == PN_ERROR) {
-            detail::set_last_socket_error(detail::get_last_system_error());
-            detail::set_last_error(PN_ESOCKET);
-            return PN_ERROR;
-        }
-        return PN_OK;
-#else
-        if (signal(SIGPIPE, SIG_DFL) == SIG_ERR) {
-            detail::set_last_socket_error(detail::get_last_system_error());
-            detail::set_last_error(PN_ESOCKET);
-            return PN_ERROR;
-        }
-        return PN_OK;
-#endif
-    }
+    int quit();
 
     inline int get_last_error() {
         return detail::last_error;
@@ -433,8 +417,7 @@ namespace pn {
         }
 
         int bind(StringView hostname, unsigned short port) {
-            std::string str_port = std::to_string(port);
-            return bind(hostname, str_port);
+            return bind(hostname, std::to_string(port));
         }
 
         int bind(struct sockaddr* addr, socklen_t addrlen) {
@@ -512,8 +495,7 @@ namespace pn {
         }
 
         int connect(StringView hostname, unsigned short port) {
-            std::string str_port = std::to_string(port);
-            return connect(hostname, str_port);
+            return connect(hostname, std::to_string(port));
         }
 
         int connect(const struct sockaddr* addr, socklen_t addrlen) {
