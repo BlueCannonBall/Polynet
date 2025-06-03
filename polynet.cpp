@@ -6,9 +6,9 @@
 
 namespace pn {
     namespace detail {
-        thread_local int last_error = PN_OK;
-        thread_local int last_gai_error = PN_OK;
-        thread_local int last_socket_error = PN_OK;
+        thread_local int last_error = PN_ESUCCESS;
+        thread_local int last_gai_error = PN_ESUCCESS;
+        thread_local int last_socket_error = PN_ESUCCESS;
     } // namespace detail
 
 #ifdef _WIN32
