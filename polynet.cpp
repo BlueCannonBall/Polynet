@@ -1,8 +1,10 @@
 #include "polynet.hpp"
 #include "secure_sockets.hpp"
 #include <algorithm>
-#include <assert.h>
 #include <string.h>
+#ifndef _GNU_SOURCE
+    #include <assert.h>
+#endif
 
 namespace pn {
     namespace detail {

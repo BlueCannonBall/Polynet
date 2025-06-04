@@ -12,6 +12,7 @@
         #define _WIN32_WINNT 0x0A00
     #endif
 
+    #include <stdint.h>
     #include <windows.h>
     #include <winsock2.h>
     #include <ws2tcpip.h>
@@ -28,7 +29,6 @@
     #include <netinet/udp.h>
     #include <signal.h>
     #include <sys/socket.h>
-    #include <sys/types.h>
     #include <unistd.h>
 #endif
 
@@ -36,9 +36,7 @@
 #include "string.hpp"
 #include <functional>
 #include <iostream>
-#include <ostream>
 #include <stddef.h>
-#include <stdint.h>
 #include <string.h>
 #include <string>
 #include <utility>
@@ -72,7 +70,7 @@
     #define PN_SD_SEND    SHUT_WR
     #define PN_SD_BOTH    SHUT_RDWR
 
-    #if __BYTE_ORDER == __BIG_ENDIAN
+    #if BYTE_ORDER == BIG_ENDIAN
         #ifndef ntohll
             #define ntohll(num) (num)
         #endif
