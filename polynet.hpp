@@ -209,7 +209,7 @@ namespace pn {
 #endif
     }
 
-    std::string universal_strerror(int error = get_last_error());
+    std::string universal_strerror();
 
     inline int getaddrinfo(StringView hostname, StringView port, const struct addrinfo* hints, struct addrinfo** ret) {
         if (int result = ::getaddrinfo(hostname.c_str(), port.c_str(), hints, ret); result != PN_OK) {

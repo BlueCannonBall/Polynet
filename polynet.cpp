@@ -82,11 +82,11 @@ namespace pn {
 #endif
     }
 
-    std::string universal_strerror(int error) {
-        std::string base_error = strerror(error);
+    std::string universal_strerror() {
+        std::string base_error = strerror(get_last_error());
         std::string specific_error;
 
-        switch (error) {
+        switch (get_last_error()) {
         case PN_ESOCKET:
             specific_error = socket_strerror();
             break;
