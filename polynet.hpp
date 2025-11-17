@@ -418,7 +418,7 @@ namespace pn {
             return bind(hostname, std::to_string(port));
         }
 
-        int bind(struct sockaddr* addr, socklen_t addrlen) {
+        int bind(const struct sockaddr* addr, socklen_t addrlen) {
             if (this->init(addr->sa_family, Socktype, Protocol) == PN_ERROR) {
                 return PN_ERROR;
             }
