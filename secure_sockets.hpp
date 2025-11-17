@@ -31,6 +31,9 @@ namespace pn {
 
     namespace tcp {
         class SecureConnection : public Connection {
+        protected:
+            void handle_io_error(int error);
+
         public:
             SSL* ssl = nullptr;
 
@@ -87,9 +90,9 @@ namespace pn {
 
             long send(const void* buf, size_t len) override {
                 if (ssl) {
+                    ERR_clear_error();
                     if (int result = SSL_write(ssl, buf, len); result <= 0) {
-                        detail::set_last_ssl_error(detail::get_last_ssl_error());
-                        detail::set_last_error(PN_ESSL);
+                        handle_io_error(result);
                         return PN_ERROR;
                     } else {
                         return result;
@@ -103,12 +106,13 @@ namespace pn {
 
             long recv(void* buf, size_t len) override {
                 if (ssl) {
-                    int result;
-                    if ((result = SSL_read(ssl, buf, len)) < 0) {
-                        detail::set_last_ssl_error(detail::get_last_ssl_error());
-                        detail::set_last_error(PN_ESSL);
+                    ERR_clear_error();
+                    if (int result = SSL_read(ssl, buf, len) < 0) {
+                        handle_io_error(result);
+                        return PN_ERROR;
+                    } else {
+                        return result;
                     }
-                    return result;
                 } else {
                     return Connection::recv(buf, len);
                 }
@@ -116,12 +120,13 @@ namespace pn {
 
             long peek(void* buf, size_t len) override {
                 if (ssl) {
-                    int result;
-                    if ((result = SSL_peek(ssl, buf, len)) < 0) {
-                        detail::set_last_ssl_error(detail::get_last_ssl_error());
-                        detail::set_last_error(PN_ESSL);
+                    ERR_clear_error();
+                    if (int result = SSL_peek(ssl, buf, len) < 0) {
+                        handle_io_error(result);
+                        return PN_ERROR;
+                    } else {
+                        return result;
                     }
-                    return result;
                 } else {
                     return Connection::peek(buf, len);
                 }

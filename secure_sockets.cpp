@@ -6,6 +6,25 @@ namespace pn {
     }
 
     namespace tcp {
+        void SecureConnection::handle_io_error(int error) {
+            switch (SSL_get_error(ssl, error)) {
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+#ifdef _WIN32
+                detail::set_last_socket_error(WSAETIMEDOUT);
+#else
+                detail::set_last_socket_error(EAGAIN);
+#endif
+                detail::set_last_error(PN_ESOCKET);
+                break;
+
+            default:
+                detail::set_last_ssl_error(detail::get_last_ssl_error());
+                detail::set_last_error(PN_ESSL);
+                break;
+            }
+        }
+
         long SecureConnection::sendall(const void* buf, size_t len) {
             if (ssl) {
                 size_t sent = 0;
