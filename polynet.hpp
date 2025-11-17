@@ -1,7 +1,7 @@
 #ifndef _POLYNET_HPP
 #define _POLYNET_HPP
 
-// Network includes
+// System includes
 #ifdef _WIN32
     #define WIN32_LEAN_AND_MEAN
 
@@ -12,7 +12,6 @@
         #define _WIN32_WINNT 0x0A00
     #endif
 
-    #include <stdint.h>
     #include <windows.h>
     #include <winsock2.h>
     #include <ws2tcpip.h>
@@ -28,6 +27,7 @@
     #include <netinet/tcp.h>
     #include <netinet/udp.h>
     #include <signal.h>
+    #include <stdint.h>
     #include <sys/socket.h>
     #include <unistd.h>
 #endif
