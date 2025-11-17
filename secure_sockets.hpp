@@ -107,7 +107,7 @@ namespace pn {
             long recv(void* buf, size_t len) override {
                 if (ssl) {
                     ERR_clear_error();
-                    if (int result = SSL_read(ssl, buf, len) < 0) {
+                    if (int result = SSL_read(ssl, buf, len); result < 0) {
                         handle_io_error(result);
                         return PN_ERROR;
                     } else {
@@ -121,7 +121,7 @@ namespace pn {
             long peek(void* buf, size_t len) override {
                 if (ssl) {
                     ERR_clear_error();
-                    if (int result = SSL_peek(ssl, buf, len) < 0) {
+                    if (int result = SSL_peek(ssl, buf, len); result < 0) {
                         handle_io_error(result);
                         return PN_ERROR;
                     } else {
