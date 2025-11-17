@@ -69,9 +69,9 @@ namespace pn {
             }
 
             int ssl_accept() {
-                if (SSL_accept(ssl) <= 0) {
-                    detail::set_last_ssl_error(detail::get_last_ssl_error());
-                    detail::set_last_error(PN_ESSL);
+                ERR_clear_error();
+                if (int result = SSL_accept(ssl); result <= 0) {
+                    handle_io_error(result);
                     return PN_ERROR;
                 }
                 return PN_OK;
@@ -79,7 +79,7 @@ namespace pn {
 
             int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl) {
-                    if (protocol_layers & PN_PROTOCOL_LAYER_SSL && SSL_shutdown(ssl) < 0) {
+                    if ((protocol_layers & PN_PROTOCOL_LAYER_SSL) && SSL_shutdown(ssl) < 0) {
                         ERR_clear_error();
                     }
                     SSL_free(ssl);
@@ -193,9 +193,9 @@ namespace pn {
             int ssl_init(StringView hostname, int verify_mode = SSL_VERIFY_PEER, StringView ca_file = {}, StringView ca_path = {});
 
             int ssl_connect() {
-                if (SSL_connect(ssl) <= 0) {
-                    detail::set_last_ssl_error(detail::get_last_ssl_error());
-                    detail::set_last_error(PN_ESSL);
+                ERR_clear_error();
+                if (int result = SSL_connect(ssl); result <= 0) {
+                    handle_io_error(result);
                     return PN_ERROR;
                 }
                 return PN_OK;
@@ -203,7 +203,7 @@ namespace pn {
 
             int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl) {
-                    if (protocol_layers & PN_PROTOCOL_LAYER_SSL && SSL_shutdown(ssl) < 0) {
+                    if ((protocol_layers & PN_PROTOCOL_LAYER_SSL) && SSL_shutdown(ssl) < 0) {
                         ERR_clear_error();
                     }
                     SSL_free(ssl);

@@ -327,7 +327,7 @@ namespace pn {
                 return PN_OK;
             }
 
-            if (protocol_layers & PN_PROTOCOL_LAYER_SYSTEM && detail::closesocket(fd) == PN_ERROR) {
+            if ((protocol_layers & PN_PROTOCOL_LAYER_SYSTEM) && detail::closesocket(fd) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
