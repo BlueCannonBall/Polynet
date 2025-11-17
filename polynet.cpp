@@ -110,15 +110,15 @@ namespace pn {
         long Connection::sendall(const void* buf, size_t len) {
             size_t sent = 0;
             while (sent < len) {
-                long result;
-                if ((result = send((const char*) buf + sent, len - sent)) == PN_ERROR) {
+                if (long result = send((const char*) buf + sent, len - sent); result == PN_ERROR) {
                     if (sent) {
                         break;
                     } else {
                         return PN_ERROR;
                     }
+                } else {
+                    sent += result;
                 }
-                sent += result;
             }
             return sent;
         }
@@ -126,8 +126,7 @@ namespace pn {
         long Connection::recvall(void* buf, size_t len) {
             size_t received = 0;
             while (received < len) {
-                long result;
-                if ((result = recv((char*) buf + received, len - received)) == PN_ERROR) {
+                if (long result = recv((char*) buf + received, len - received); result == PN_ERROR) {
                     if (received) {
                         break;
                     } else {
@@ -135,8 +134,9 @@ namespace pn {
                     }
                 } else if (!result) {
                     break;
+                } else {
+                    received += result;
                 }
-                received += result;
             }
             return received;
         }
