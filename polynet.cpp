@@ -43,9 +43,10 @@ namespace pn {
             "All addresses returned by getaddrinfo are bad", // PN_EBADADDRS
             "inet_pton failed",                              // PN_EPTON
             "SSL error",                                     // PN_ESSL
+            "User callback failed",                          // PN_EUSERCB
         };
 
-        if (error >= 0 && error <= 5) {
+        if (error >= 0 && error <= 6) {
             return error_strings[error];
         } else {
             return "Unknown error";

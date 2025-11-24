@@ -105,6 +105,7 @@
 #define PN_EBADADDRS 3
 #define PN_EPTON     4
 #define PN_ESSL      5
+#define PN_EUSERCB   6
 
 namespace pn {
 #ifdef _WIN32
@@ -450,7 +451,7 @@ namespace pn {
         BasicClient(Args&&... args):
             Base(std::forward<Args>(args)...) {}
 
-        int connect(StringView hostname, StringView port, const std::function<void(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
+        int connect(StringView hostname, StringView port, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
             struct addrinfo* ai_list;
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
@@ -471,7 +472,11 @@ namespace pn {
                 }
 
                 if (config_cb) {
-                    config_cb(*this);
+                    if (!config_cb(*this)) {
+                        detail::set_last_error(PN_EUSERCB);
+                        pn::freeaddrinfo(ai_list);
+                        return PN_ERROR;
+                    }
                 }
 
                 if (::connect(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) {
@@ -500,13 +505,16 @@ namespace pn {
             return connect(hostname, std::to_string(port));
         }
 
-        int connect(const struct sockaddr* addr, socklen_t addrlen, const std::function<void(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
+        int connect(const struct sockaddr* addr, socklen_t addrlen, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
             if (this->init(addr->sa_family, Socktype, Protocol) == PN_ERROR) {
                 return PN_ERROR;
             }
 
             if (config_cb) {
-                config_cb(*this);
+                if (!config_cb(*this)) {
+                    detail::set_last_error(PN_EUSERCB);
+                    return PN_ERROR;
+                }
             }
 
             if (::connect(this->fd, addr, addrlen) == PN_ERROR) {
