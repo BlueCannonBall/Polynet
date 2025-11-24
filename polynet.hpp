@@ -450,7 +450,7 @@ namespace pn {
         BasicClient(Args&&... args):
             Base(std::forward<Args>(args)...) {}
 
-        int connect(StringView hostname, StringView port) {
+        int connect(StringView hostname, StringView port, const std::function<void(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
             struct addrinfo* ai_list;
             struct addrinfo hints = {0};
             hints.ai_family = AF_UNSPEC;
@@ -468,6 +468,10 @@ namespace pn {
             for (ai_it = ai_list; ai_it != nullptr; ai_it = ai_it->ai_next) {
                 if (this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol) == PN_ERROR) {
                     continue;
+                }
+
+                if (config_cb) {
+                    config_cb(*this);
                 }
 
                 if (::connect(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) {
@@ -496,9 +500,13 @@ namespace pn {
             return connect(hostname, std::to_string(port));
         }
 
-        int connect(const struct sockaddr* addr, socklen_t addrlen) {
+        int connect(const struct sockaddr* addr, socklen_t addrlen, const std::function<void(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
             if (this->init(addr->sa_family, Socktype, Protocol) == PN_ERROR) {
                 return PN_ERROR;
+            }
+
+            if (config_cb) {
+                config_cb(*this);
             }
 
             if (::connect(this->fd, addr, addrlen) == PN_ERROR) {
