@@ -501,8 +501,8 @@ namespace pn {
             return PN_OK;
         }
 
-        int connect(StringView hostname, unsigned short port) {
-            return connect(hostname, std::to_string(port));
+        int connect(StringView hostname, unsigned short port, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
+            return connect(hostname, std::to_string(port), config_cb);
         }
 
         int connect(const struct sockaddr* addr, socklen_t addrlen, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
