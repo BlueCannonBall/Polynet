@@ -471,12 +471,10 @@ namespace pn {
                     continue;
                 }
 
-                if (config_cb) {
-                    if (!config_cb(*this)) {
-                        detail::set_last_error(PN_EUSERCB);
-                        pn::freeaddrinfo(ai_list);
-                        return PN_ERROR;
-                    }
+                if (config_cb && !config_cb(*this)) {
+                    detail::set_last_error(PN_EUSERCB);
+                    pn::freeaddrinfo(ai_list);
+                    return PN_ERROR;
                 }
 
                 if (::connect(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) {
@@ -510,11 +508,9 @@ namespace pn {
                 return PN_ERROR;
             }
 
-            if (config_cb) {
-                if (!config_cb(*this)) {
-                    detail::set_last_error(PN_EUSERCB);
-                    return PN_ERROR;
-                }
+            if (config_cb && !config_cb(*this)) {
+                detail::set_last_error(PN_EUSERCB);
+                return PN_ERROR;
             }
 
             if (::connect(this->fd, addr, addrlen) == PN_ERROR) {
