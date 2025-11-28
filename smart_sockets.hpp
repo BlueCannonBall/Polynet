@@ -141,7 +141,7 @@ namespace pn {
             }
         }
 
-        T release() const {
+        T release() {
             return std::exchange(this->socket, T());
         }
     };
