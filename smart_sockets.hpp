@@ -1,5 +1,5 @@
-#ifndef _POLYNET_SMART_SOCKETS_HPP
-#define _POLYNET_SMART_SOCKETS_HPP
+#ifndef POLYNET_SMART_SOCKETS_HPP_
+#define POLYNET_SMART_SOCKETS_HPP_
 
 #include <mutex>
 #include <utility>

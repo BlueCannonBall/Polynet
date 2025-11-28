@@ -1,5 +1,5 @@
-#ifndef _POLYNET_STRING_HPP
-#define _POLYNET_STRING_HPP
+#ifndef POLYNET_STRING_HPP_
+#define POLYNET_STRING_HPP_
 
 #include <memory>
 #include <stddef.h>

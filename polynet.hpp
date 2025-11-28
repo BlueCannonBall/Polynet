@@ -1,5 +1,5 @@
-#ifndef _POLYNET_HPP
-#define _POLYNET_HPP
+#ifndef POLYNET_HPP_
+#define POLYNET_HPP_
 
 // System includes
 #ifdef _WIN32

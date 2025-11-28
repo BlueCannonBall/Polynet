@@ -1,5 +1,5 @@
-#ifndef _POLYNET_SECURE_SOCKETS_HPP
-#define _POLYNET_SECURE_SOCKETS_HPP
+#ifndef POLYNET_SECURE_SOCKETS_HPP_
+#define POLYNET_SECURE_SOCKETS_HPP_
 
 #include "polynet.hpp"
 #include <openssl/err.h>
