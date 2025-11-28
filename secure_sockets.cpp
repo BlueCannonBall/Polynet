@@ -74,6 +74,8 @@ namespace pn {
                 return PN_ERROR;
             }
 
+            SSL_CTX_set_quiet_shutdown(ssl_ctx, 1);
+
             if (SSL_CTX_use_certificate_chain_file(ssl_ctx, certificate_chain_file.c_str()) != 1) {
                 detail::set_last_ssl_error(detail::get_last_ssl_error());
                 detail::set_last_error(PN_ESSL);
@@ -142,6 +144,8 @@ namespace pn {
                 detail::set_last_error(PN_ESSL);
                 return PN_ERROR;
             }
+
+            SSL_CTX_set_quiet_shutdown(ssl_ctx, 1);
 
             SSL_CTX_set_verify(ssl_ctx, verify_mode, nullptr);
             if (verify_mode != SSL_VERIFY_NONE) {
