@@ -28,9 +28,8 @@ namespace pn {
                 return u"";
             } else if constexpr (std::is_same_v<CharT, char32_t>) {
                 return U"";
-            } else {
-                return nullptr;
             }
+            return nullptr;
         }
 
     public:

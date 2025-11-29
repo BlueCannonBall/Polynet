@@ -33,38 +33,34 @@ namespace pn {
                     if ((result = send((const char*) buf + sent, len - sent)) == PN_ERROR) {
                         if (sent) {
                             break;
-                        } else {
-                            return PN_ERROR;
                         }
+                        return PN_ERROR;
                     }
                     sent += result;
                 }
                 return sent;
-            } else {
-                return Connection::sendall(buf, len);
             }
+            return Connection::sendall(buf, len);
         }
 
         long SecureConnection::recvall(void* buf, size_t len) {
             if (ssl) {
                 size_t received = 0;
                 while (received < len) {
-                    long result;
-                    if ((result = recv((char*) buf + received, len - received)) == PN_ERROR) {
+                    if (long result = recv((char*) buf + received, len - received); result == PN_ERROR) {
                         if (received) {
                             break;
-                        } else {
-                            return PN_ERROR;
                         }
+                        return PN_ERROR;
                     } else if (!result) {
                         break;
+                    } else {
+                        received += result;
                     }
-                    received += result;
                 }
                 return received;
-            } else {
-                return Connection::recvall(buf, len);
             }
+            return Connection::recvall(buf, len);
         }
 
         int SecureServer::ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type) {
@@ -108,9 +104,8 @@ namespace pn {
                         detail::set_last_socket_error(detail::get_last_system_error());
                         detail::set_last_error(PN_ESOCKET);
                         return PN_ERROR;
-                    } else {
-                        continue;
                     }
+                    continue;
 #else
                     switch (detail::get_last_system_error()) {
                     default:

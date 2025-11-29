@@ -97,9 +97,8 @@ namespace pn {
                     } else {
                         return result;
                     }
-                } else {
-                    return Connection::send(buf, len);
                 }
+                return Connection::send(buf, len);
             }
 
             long sendall(const void* buf, size_t len) override;
@@ -113,9 +112,8 @@ namespace pn {
                     } else {
                         return result;
                     }
-                } else {
-                    return Connection::recv(buf, len);
                 }
+                return Connection::recv(buf, len);
             }
 
             long peek(void* buf, size_t len) override {
@@ -127,9 +125,8 @@ namespace pn {
                     } else {
                         return result;
                     }
-                } else {
-                    return Connection::peek(buf, len);
                 }
+                return Connection::peek(buf, len);
             }
 
             long recvall(void* buf, size_t len) override;

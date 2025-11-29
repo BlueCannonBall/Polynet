@@ -48,9 +48,8 @@ namespace pn {
 
         if (error >= 0 && error <= 6) {
             return error_strings[error];
-        } else {
-            return "Unknown error";
         }
+        return "Unknown error";
     }
 
     std::string socket_strerror(int error) {
@@ -114,9 +113,8 @@ namespace pn {
                 if (long result = send((const char*) buf + sent, len - sent); result == PN_ERROR) {
                     if (sent) {
                         break;
-                    } else {
-                        return PN_ERROR;
                     }
+                    return PN_ERROR;
                 } else {
                     sent += result;
                 }
@@ -130,9 +128,8 @@ namespace pn {
                 if (long result = recv((char*) buf + received, len - received); result == PN_ERROR) {
                     if (received) {
                         break;
-                    } else {
-                        return PN_ERROR;
                     }
+                    return PN_ERROR;
                 } else if (!result) {
                     break;
                 } else {
@@ -268,9 +265,8 @@ namespace pn {
                         detail::set_last_socket_error(detail::get_last_system_error());
                         detail::set_last_error(PN_ESOCKET);
                         return PN_ERROR;
-                    } else {
-                        continue;
                     }
+                    continue;
 #else
                     switch (detail::get_last_system_error()) {
                     default:
