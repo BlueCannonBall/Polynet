@@ -4,15 +4,15 @@
 #include <mutex>
 #include <utility>
 
-#define _POLYNET_COPY_CTOR_TEMPLATE(class_name, type, arg_name)           \
+#define POLYNET_COPY_CTOR_TEMPLATE_(class_name, type, arg_name)           \
     class_name(const class_name& arg_name): class_name(arg_name, true) {} \
     template <typename type>                                              \
     class_name(const class_name<type>& arg_name, bool _same_type = false)
-#define _POLYNET_MOVE_CTOR_TEMPLATE(class_name, type, arg_name)                 \
+#define POLYNET_MOVE_CTOR_TEMPLATE_(class_name, type, arg_name)                 \
     class_name(class_name&& arg_name): class_name(std::move(arg_name), true) {} \
     template <typename type>                                                    \
     class_name(class_name<type>&& arg_name, bool _same_type = false)
-#define _POLYNET_COPY_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name) \
+#define POLYNET_COPY_ASSIGN_TEMPLATE_(class_name, type1, type2, arg_name) \
     class_name& operator=(const class_name& arg_name) {                   \
         if (this != &arg_name) {                                          \
             return class_name::operator= <type1>(arg_name);               \
@@ -22,7 +22,7 @@
     }                                                                     \
     template <typename type2>                                             \
     class_name& operator=(const class_name<type2>& arg_name)
-#define _POLYNET_MOVE_ASSIGN_TEMPLATE(class_name, type1, type2, arg_name) \
+#define POLYNET_MOVE_ASSIGN_TEMPLATE_(class_name, type1, type2, arg_name) \
     class_name& operator=(class_name&& arg_name) {                        \
         if (this != &arg_name) {                                          \
             return class_name::operator= <type1>(std::move(arg_name));    \
@@ -112,11 +112,11 @@ namespace pn {
         UniqueSocket() = default;
         UniqueSocket(const T& socket):
             BasicSocket<T>(socket) {}
-        _POLYNET_MOVE_CTOR_TEMPLATE(UniqueSocket, U, unique_socket) {
+        POLYNET_MOVE_CTOR_TEMPLATE_(UniqueSocket, U, unique_socket) {
             *this = std::move(unique_socket);
         }
 
-        _POLYNET_MOVE_ASSIGN_TEMPLATE(UniqueSocket, T, U, unique_socket) {
+        POLYNET_MOVE_ASSIGN_TEMPLATE_(UniqueSocket, T, U, unique_socket) {
             if (this->socket != unique_socket.socket) {
                 this->socket.close(/* Reset fd */ false);
                 this->socket = unique_socket.socket;
@@ -184,10 +184,10 @@ namespace pn {
         SharedSocket() = default;
         SharedSocket(const T& socket):
             BasicSocket<T>(socket) {}
-        _POLYNET_COPY_CTOR_TEMPLATE(SharedSocket, U, shared_socket) {
+        POLYNET_COPY_CTOR_TEMPLATE_(SharedSocket, U, shared_socket) {
             *this = shared_socket;
         }
-        _POLYNET_MOVE_CTOR_TEMPLATE(SharedSocket, U, shared_socket) {
+        POLYNET_MOVE_CTOR_TEMPLATE_(SharedSocket, U, shared_socket) {
             *this = std::move(shared_socket);
         }
         template <typename U>
@@ -195,7 +195,7 @@ namespace pn {
             *this = std::move(unique_socket);
         }
 
-        _POLYNET_COPY_ASSIGN_TEMPLATE(SharedSocket, T, U, shared_socket) {
+        POLYNET_COPY_ASSIGN_TEMPLATE_(SharedSocket, T, U, shared_socket) {
             if (this->socket != shared_socket.socket) {
                 decrement();
                 this->socket = shared_socket.socket;
@@ -205,7 +205,7 @@ namespace pn {
             return *this;
         }
 
-        _POLYNET_MOVE_ASSIGN_TEMPLATE(SharedSocket, T, U, shared_socket) {
+        POLYNET_MOVE_ASSIGN_TEMPLATE_(SharedSocket, T, U, shared_socket) {
             if (this->socket != shared_socket.socket) {
                 decrement();
                 this->socket = shared_socket.socket;
@@ -289,10 +289,10 @@ namespace pn {
 
     public:
         WeakSocket() = default;
-        _POLYNET_COPY_CTOR_TEMPLATE(WeakSocket, U, weak_socket) {
+        POLYNET_COPY_CTOR_TEMPLATE_(WeakSocket, U, weak_socket) {
             *this = weak_socket;
         }
-        _POLYNET_MOVE_CTOR_TEMPLATE(WeakSocket, U, weak_socket) {
+        POLYNET_MOVE_CTOR_TEMPLATE_(WeakSocket, U, weak_socket) {
             *this = std::move(weak_socket);
         }
         template <typename U>
@@ -304,7 +304,7 @@ namespace pn {
             *this = std::move(shared_socket);
         }
 
-        _POLYNET_COPY_ASSIGN_TEMPLATE(WeakSocket, T, U, weak_socket) {
+        POLYNET_COPY_ASSIGN_TEMPLATE_(WeakSocket, T, U, weak_socket) {
             if (this->socket != weak_socket.socket) {
                 decrement();
                 this->socket = weak_socket.socket;
@@ -314,7 +314,7 @@ namespace pn {
             return *this;
         }
 
-        _POLYNET_MOVE_ASSIGN_TEMPLATE(WeakSocket, T, U, weak_socket) {
+        POLYNET_MOVE_ASSIGN_TEMPLATE_(WeakSocket, T, U, weak_socket) {
             if (this->socket != weak_socket.socket) {
                 decrement();
                 this->socket = weak_socket.socket;
