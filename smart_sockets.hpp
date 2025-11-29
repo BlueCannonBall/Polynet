@@ -119,7 +119,7 @@ namespace pn {
                 this->socket.close(/* Reset fd */ false);
                 this->socket = unique_socket.socket;
 
-                unique_socket.socket = {};
+                unique_socket.socket = U();
             }
             return *this;
         }
@@ -130,7 +130,7 @@ namespace pn {
 
         void reset() {
             this->socket.close(/* Reset fd */ false);
-            this->socket = {};
+            this->socket = T();
         }
 
         void reset(const T& socket) {
@@ -141,7 +141,7 @@ namespace pn {
         }
 
         T release() {
-            return std::exchange(this->socket, {});
+            return std::exchange(this->socket, T());
         }
     };
 
@@ -216,7 +216,7 @@ namespace pn {
                 this->socket = shared_socket.socket;
                 control_block = shared_socket.control_block;
 
-                shared_socket.socket = {};
+                shared_socket.socket = U();
                 shared_socket.control_block = nullptr;
             }
             return *this;
@@ -228,7 +228,7 @@ namespace pn {
             this->socket = unique_socket.socket;
             control_block = new detail::ControlBlock;
 
-            unique_socket.socket = {};
+            unique_socket.socket = U();
 
             return *this;
         }
@@ -239,7 +239,7 @@ namespace pn {
 
         void reset() {
             decrement();
-            this->socket = {};
+            this->socket = T();
             control_block = nullptr;
         }
 
@@ -330,7 +330,7 @@ namespace pn {
                 this->socket = weak_socket.socket;
                 control_block = weak_socket.control_block;
 
-                weak_socket.socket = {};
+                weak_socket.socket = U();
                 weak_socket.control_block = nullptr;
             }
             return *this;
@@ -363,7 +363,7 @@ namespace pn {
 
         void reset() {
             decrement();
-            this->socket = {};
+            this->socket = T();
             control_block = nullptr;
         }
 
