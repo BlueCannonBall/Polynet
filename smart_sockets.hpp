@@ -16,9 +16,8 @@
     class_name& operator=(const class_name& arg_name) {                   \
         if (this != &arg_name) {                                          \
             return class_name::operator= <type1>(arg_name);               \
-        } else {                                                          \
-            return *this;                                                 \
         }                                                                 \
+        return *this;                                                     \
     }                                                                     \
     template <typename type2>                                             \
     class_name& operator=(const class_name<type2>& arg_name)
@@ -26,9 +25,8 @@
     class_name& operator=(class_name&& arg_name) {                        \
         if (this != &arg_name) {                                          \
             return class_name::operator= <type1>(std::move(arg_name));    \
-        } else {                                                          \
-            return *this;                                                 \
         }                                                                 \
+        return *this;                                                     \
     }                                                                     \
     template <typename type2>                                             \
     class_name& operator=(class_name<type2>&& arg_name)
@@ -117,11 +115,12 @@ namespace pn {
         }
 
         POLYNET_MOVE_ASSIGN_TEMPLATE_(UniqueSocket, T, U, unique_socket) {
-            if (this->socket != unique_socket.socket) {
+            if (this != &unique_socket) {
                 this->socket.close(/* Reset fd */ false);
                 this->socket = unique_socket.socket;
+
+                unique_socket.socket = {};
             }
-            unique_socket.socket = U();
             return *this;
         }
 
@@ -131,7 +130,7 @@ namespace pn {
 
         void reset() {
             this->socket.close(/* Reset fd */ false);
-            this->socket = T();
+            this->socket = {};
         }
 
         void reset(const T& socket) {
@@ -142,7 +141,7 @@ namespace pn {
         }
 
         T release() {
-            return std::exchange(this->socket, T());
+            return std::exchange(this->socket, {});
         }
     };
 
@@ -158,20 +157,25 @@ namespace pn {
         template <typename U>
         friend class UniqueSocket;
 
-        detail::ControlBlock* control_block = new detail::ControlBlock;
+        detail::ControlBlock* control_block = nullptr;
 
         void increment() {
-            std::lock_guard<std::mutex> lock(control_block->mutex);
-            ++control_block->use_count;
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mutex);
+                ++control_block->use_count;
+            }
         }
 
         void decrement() {
-            std::unique_lock<std::mutex> lock(control_block->mutex);
-            if (!--control_block->use_count) {
-                this->socket.close(/* Reset fd */ false);
-                if (!control_block->weak_use_count) {
-                    lock.unlock();
-                    delete control_block;
+            if (control_block) {
+                std::unique_lock<std::mutex> lock(control_block->mutex);
+                if (--control_block->use_count == 0) {
+                    this->socket.close(/* Reset fd */ false);
+                    if (!control_block->weak_use_count) {
+                        lock.unlock();
+                        lock.release();
+                        delete control_block;
+                    }
                 }
             }
         }
@@ -183,7 +187,8 @@ namespace pn {
     public:
         SharedSocket() = default;
         SharedSocket(const T& socket):
-            BasicSocket<T>(socket) {}
+            BasicSocket<T>(socket),
+            control_block(new detail::ControlBlock) {}
         POLYNET_COPY_CTOR_TEMPLATE_(SharedSocket, U, shared_socket) {
             *this = shared_socket;
         }
@@ -196,7 +201,7 @@ namespace pn {
         }
 
         POLYNET_COPY_ASSIGN_TEMPLATE_(SharedSocket, T, U, shared_socket) {
-            if (this->socket != shared_socket.socket) {
+            if (this != &shared_socket) {
                 decrement();
                 this->socket = shared_socket.socket;
                 control_block = shared_socket.control_block;
@@ -206,24 +211,25 @@ namespace pn {
         }
 
         POLYNET_MOVE_ASSIGN_TEMPLATE_(SharedSocket, T, U, shared_socket) {
-            if (this->socket != shared_socket.socket) {
+            if (this != &shared_socket) {
                 decrement();
                 this->socket = shared_socket.socket;
                 control_block = shared_socket.control_block;
+
+                shared_socket.socket = {};
+                shared_socket.control_block = nullptr;
             }
-            shared_socket.socket = U();
-            shared_socket.control_block = new detail::ControlBlock;
             return *this;
         }
 
         template <typename U>
         SharedSocket& operator=(UniqueSocket<U>&& unique_socket) {
-            if (this->socket != unique_socket.socket) {
-                decrement();
-                this->socket = unique_socket.socket;
-                control_block = new detail::ControlBlock;
-            }
-            unique_socket.socket = U();
+            decrement();
+            this->socket = unique_socket.socket;
+            control_block = new detail::ControlBlock;
+
+            unique_socket.socket = {};
+
             return *this;
         }
 
@@ -233,8 +239,8 @@ namespace pn {
 
         void reset() {
             decrement();
-            this->socket = T();
-            control_block = new detail::ControlBlock;
+            this->socket = {};
+            control_block = nullptr;
         }
 
         void reset(const T& socket) {
@@ -246,8 +252,11 @@ namespace pn {
         }
 
         use_count_t use_count() const {
-            std::lock_guard<std::mutex> lock(control_block->mutex);
-            return control_block->use_count;
+            if (control_block) {
+                std::lock_guard<std::mutex> lock(control_block->mutex);
+                return control_block->use_count;
+            }
+            return 0;
         }
     };
 
@@ -277,6 +286,7 @@ namespace pn {
                 std::unique_lock<std::mutex> lock(control_block->mutex);
                 if ((!--control_block->weak_use_count) && !control_block->use_count) {
                     lock.unlock();
+                    lock.release();
                     delete control_block;
                 }
             }
@@ -305,7 +315,7 @@ namespace pn {
         }
 
         POLYNET_COPY_ASSIGN_TEMPLATE_(WeakSocket, T, U, weak_socket) {
-            if (this->socket != weak_socket.socket) {
+            if (this != &weak_socket) {
                 decrement();
                 this->socket = weak_socket.socket;
                 control_block = weak_socket.control_block;
@@ -315,38 +325,35 @@ namespace pn {
         }
 
         POLYNET_MOVE_ASSIGN_TEMPLATE_(WeakSocket, T, U, weak_socket) {
-            if (this->socket != weak_socket.socket) {
+            if (this != &weak_socket) {
                 decrement();
                 this->socket = weak_socket.socket;
                 control_block = weak_socket.control_block;
+
+                weak_socket.socket = {};
+                weak_socket.control_block = nullptr;
             }
-            weak_socket.socket = U();
-            weak_socket.control_block = nullptr;
             return *this;
         }
 
         template <typename U>
         WeakSocket& operator=(const SharedSocket<U>& shared_socket) {
-            if (this->socket != shared_socket.socket) {
-                decrement();
-                this->socket = shared_socket.socket;
-                control_block = shared_socket.control_block;
-                increment();
-            }
+            decrement();
+            this->socket = shared_socket.socket;
+            control_block = shared_socket.control_block;
+            increment();
             return *this;
         }
 
         template <typename U>
         WeakSocket& operator=(SharedSocket<U>&& shared_socket) {
-            if (this->socket != shared_socket.socket) {
-                decrement();
-                this->socket = shared_socket.socket;
-                control_block = shared_socket.control_block;
-                increment();
-            }
-            shared_socket.decrement();
-            shared_socket.socket = U();
-            shared_socket.control_block = new detail::ControlBlock;
+            decrement();
+            this->socket = shared_socket.socket;
+            control_block = shared_socket.control_block;
+            increment();
+
+            shared_socket.reset();
+
             return *this;
         }
 
@@ -356,7 +363,7 @@ namespace pn {
 
         void reset() {
             decrement();
-            this->socket = T();
+            this->socket = {};
             control_block = nullptr;
         }
 
@@ -364,9 +371,8 @@ namespace pn {
             if (control_block) {
                 std::lock_guard<std::mutex> lock(control_block->mutex);
                 return control_block->use_count;
-            } else {
-                return 0; // Invalid state
             }
+            return 0;
         }
 
         bool expired() const {
@@ -382,7 +388,6 @@ namespace pn {
                     return ret;
                 }
             }
-
             return SharedSocket<T>();
         }
     };
