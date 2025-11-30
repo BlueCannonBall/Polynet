@@ -595,21 +595,31 @@ namespace pn {
 
         class BufReceiver {
         protected:
+            size_t cursor = 0;
             std::vector<char> buf;
 
-        public:
-            size_t size;
-
-            BufReceiver(size_t size = 4'000):
-                size(size) {}
-
-            long recv(Connection& conn, void* buf, size_t len);
-            long peek(Connection& conn, void* buf, size_t len);
-            long recvall(Connection& conn, void* buf, size_t len);
-
-            void rewind(const void* buf, size_t len) {
-                this->buf.insert(this->buf.begin(), (const char*) buf, (const char*) buf + len);
+            void clear() {
+                buf.clear();
+                cursor = 0;
             }
+
+        public:
+            size_t capacity;
+
+            BufReceiver(size_t capacity = 4'000):
+                capacity(capacity) {
+                buf.reserve(capacity);
+            }
+
+            size_t available() const {
+                return buf.size() - cursor;
+            }
+
+            long recv(Connection& conn, void* ret, size_t len);
+            long peek(Connection& conn, void* ret, size_t len);
+            long recvall(Connection& conn, void* ret, size_t len);
+
+            void rewind(const void* data, size_t len);
         };
 
         class Server : public BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP> {

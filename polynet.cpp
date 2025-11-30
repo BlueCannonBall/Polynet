@@ -139,111 +139,106 @@ namespace pn {
             return received;
         }
 
-        long BufReceiver::recv(Connection& conn, void* buf, size_t len) {
-            if (!size) {
-                return conn.recvall(buf, len);
-            }
+        long BufReceiver::recv(Connection& conn, void* ret, size_t len) {
+            if (available()) {
+                size_t received = std::min(len, available());
+                memcpy(ret, buf.data() + cursor, received);
+                cursor += received;
 
-            if (len > this->buf.size()) {
-                if (!this->buf.empty()) {
-                    memcpy(buf, this->buf.data(), this->buf.size());
-                    this->buf.clear();
-                    return this->buf.size();
-                } else if (len > size) {
-                    return conn.recv(buf, len);
-                } else {
-                    long result;
-                    this->buf.resize(size);
-                    if ((result = conn.recv(this->buf.data(), size)) == PN_ERROR) {
-                        return PN_ERROR;
-                    }
-                    this->buf.resize(result);
-
-                    memcpy(buf, this->buf.data(), std::min<long long>(len, result));
-                    this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(len, result));
-                    return std::min<long long>(len, result);
+                if (!available()) {
+                    clear();
                 }
-            } else if (len < this->buf.size()) {
-                memcpy(buf, this->buf.data(), len);
-                this->buf.erase(this->buf.begin(), this->buf.begin() + len);
-                return len;
-            } else {
-                memcpy(buf, this->buf.data(), this->buf.size());
-                this->buf.clear();
-                return len;
+
+                return received;
             }
+
+            if (len >= capacity) {
+                return conn.recv(ret, len);
+            }
+
+            long result;
+            buf.resize(capacity);
+            if ((result = conn.recv(buf.data(), capacity)) == PN_ERROR) {
+                clear();
+                return PN_ERROR;
+            } else if (!result) {
+                clear();
+                return 0;
+            }
+            buf.resize(result);
+            cursor = 0;
+
+            size_t received = std::min<size_t>(len, result);
+            memcpy(ret, buf.data(), received);
+            cursor += received;
+
+            if (!available()) {
+                clear();
+            }
+
+            return received;
         }
 
-        long BufReceiver::peek(Connection& conn, void* buf, size_t len) {
-            if (!size) {
-                return conn.peek(buf, len);
+        long BufReceiver::peek(Connection& conn, void* ret, size_t len) {
+            if (available()) {
+                size_t to_copy = std::min(len, available());
+                memcpy(ret, buf.data() + cursor, to_copy);
+                return to_copy;
             }
 
-            if (len > this->buf.size()) {
-                if (!this->buf.empty()) {
-                    memcpy(buf, this->buf.data(), this->buf.size());
-                    return this->buf.size();
-                } else if (len > size) {
-                    return conn.peek(buf, len);
-                } else {
-                    long result;
-                    this->buf.resize(size);
-                    if ((result = conn.peek(this->buf.data(), size)) == PN_ERROR) {
-                        return PN_ERROR;
-                    }
-                    this->buf.resize(result);
-
-                    memcpy(buf, this->buf.data(), std::min<long long>(len, result));
-                    return std::min<long long>(len, result);
-                }
-            } else if (len < this->buf.size()) {
-                memcpy(buf, this->buf.data(), len);
-                return len;
-            } else {
-                memcpy(buf, this->buf.data(), this->buf.size());
-                return len;
+            if (len >= capacity) {
+                return conn.peek(ret, len);
             }
+
+            long result;
+            buf.resize(capacity);
+            if ((result = conn.recv(buf.data(), capacity)) == PN_ERROR) {
+                clear();
+                return PN_ERROR;
+            } else if (!result) {
+                clear();
+                return 0;
+            }
+            buf.resize(result);
+            cursor = 0;
+
+            size_t received = std::min<size_t>(len, result);
+            memcpy(ret, buf.data(), received);
+            return received;
         }
 
-        long BufReceiver::recvall(Connection& conn, void* buf, size_t len) {
-            if (!size) {
-                return conn.recvall(buf, len);
-            }
-
-            if (len > this->buf.size()) {
-                if (!this->buf.empty()) {
-                    memcpy(buf, this->buf.data(), this->buf.size());
-                } else if (len > 1) {
-                    return conn.recvall(buf, len);
-                } else {
-                    long result;
-                    this->buf.resize(size);
-                    if ((result = conn.recv(this->buf.data(), size)) == PN_ERROR) {
-                        return PN_ERROR;
+        long BufReceiver::recvall(Connection& conn, void* ret, size_t len) {
+            size_t received = 0;
+            while (received < len) {
+                if (long result = recv(conn, (char*) ret + received, len - received); result == PN_ERROR) {
+                    if (received) {
+                        break;
                     }
-                    this->buf.resize(result);
-
-                    memcpy(buf, this->buf.data(), std::min<long long>(len, result));
-                    this->buf.erase(this->buf.begin(), this->buf.begin() + std::min<long long>(len, result));
-                    return std::min<long long>(len, result);
-                }
-
-                long result;
-                if ((result = conn.recvall((char*) buf + this->buf.size(), len - this->buf.size())) == PN_ERROR) {
                     return PN_ERROR;
+                } else if (!result) {
+                    break;
+                } else {
+                    received += result;
                 }
+            }
+            return received;
+        }
 
-                result += this->buf.size();
-                this->buf.clear();
-                return result;
-            } else if (len < this->buf.size()) {
-                memcpy(buf, this->buf.data(), len);
-                this->buf.erase(this->buf.begin(), this->buf.begin() + len);
-                return len;
-            } else {
-                memcpy(buf, this->buf.data(), this->buf.size());
-                this->buf.clear();
-                return len;
+        void BufReceiver::rewind(const void* data, size_t size) {
+            if (size) {
+                if (cursor >= size) {
+                    cursor -= size;
+                    memcpy(buf.data() + cursor, data, size);
+                } else {
+                    std::vector<char> new_buf;
+                    new_buf.reserve(size + available() + capacity);
+
+                    new_buf.insert(new_buf.end(), (const char*) data, (const char*) data + size);
+                    new_buf.insert(new_buf.end(), buf.begin() + cursor, buf.end());
+
+                    buf = std::move(new_buf);
+                    cursor = 0;
+                }
             }
         }
 
