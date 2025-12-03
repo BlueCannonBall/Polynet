@@ -627,8 +627,21 @@ namespace pn {
             size_t capacity;
 
             BufReceiver(size_t capacity = 4'000):
-                capacity(capacity) {
-                buf.reserve(capacity);
+                capacity(capacity) {}
+            BufReceiver(BufReceiver&& buf_receiver) {
+                *this = std::move(buf_receiver);
+            }
+
+            BufReceiver& operator=(BufReceiver&& buf_receiver) {
+                if (this != &buf_receiver) {
+                    cursor = buf_receiver.cursor;
+                    buf = std::move(buf_receiver.buf);
+                    capacity = buf_receiver.capacity;
+
+                    buf_receiver.cursor = 0;
+                    buf_receiver.capacity = 4'000;
+                }
+                return *this;
             }
 
             size_t available() const {
