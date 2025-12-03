@@ -270,27 +270,21 @@ namespace pn {
     class Socket {
     public:
         sockfd_t fd = PN_INVALID_SOCKFD;
-        struct sockaddr addr = {0};      // Corresponds to the address to which
-        socklen_t addrlen = sizeof addr; // the server is bound to for servers,
-                                         // or the server to which the client is
-                                         // connected to for clients
+        struct sockaddr addr; // Corresponds to the address to which
+        socklen_t addrlen;    // the server is bound to for servers,
+                              // or the server to which the client is
+                              // connected to for clients
 
         Socket() = default;
         Socket(sockfd_t fd):
             fd(fd) {}
-        Socket(const struct sockaddr& addr, socklen_t addrlen):
-            addr(addr),
-            addrlen(addrlen) {}
         Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
             fd(fd),
             addr(addr),
             addrlen(addrlen) {}
-        Socket(const Socket&) = default;
         Socket(Socket&& socket) {
             *this = std::move(socket);
         }
-
-        Socket& operator=(const Socket&) = default;
 
         Socket& operator=(Socket&& socket) {
             if (this != &socket) {
@@ -298,11 +292,13 @@ namespace pn {
                 addr = socket.addr;
                 addrlen = socket.addrlen;
 
-                socket.fd = PN_INVALID_SOCKFD;
-                socket.addr = {0};
-                socket.addrlen = sizeof socket.addr;
+                socket.close();
             }
             return *this;
+        }
+
+        virtual ~Socket() {
+            close(false);
         }
 
         // Don't use this if you are using bind or connect on pn::Server or pn::Client, respectively
@@ -552,8 +548,6 @@ namespace pn {
             Connection() = default;
             Connection(sockfd_t fd):
                 Socket(fd) {}
-            Connection(const struct sockaddr& addr, socklen_t addrlen):
-                Socket(addr, addrlen) {}
             Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 Socket(fd, addr, addrlen) {}
 
@@ -615,8 +609,8 @@ namespace pn {
 
         class BufReceiver {
         protected:
-            size_t cursor = 0;
             std::vector<char> buf;
+            size_t cursor = 0;
 
             void clear() {
                 buf.clear();
@@ -634,8 +628,8 @@ namespace pn {
 
             BufReceiver& operator=(BufReceiver&& buf_receiver) {
                 if (this != &buf_receiver) {
-                    cursor = buf_receiver.cursor;
                     buf = std::move(buf_receiver.buf);
+                    cursor = buf_receiver.cursor;
                     capacity = buf_receiver.capacity;
 
                     buf_receiver.cursor = 0;
@@ -656,9 +650,6 @@ namespace pn {
         };
 
         class Server : public BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP> {
-        protected:
-            int backlog = -1;
-
         public:
             typedef Connection connection_type;
 
@@ -669,22 +660,6 @@ namespace pn {
                 BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
             Server(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
-            Server(const Server&) = default;
-            Server(Server&& server) {
-                *this = std::move(server);
-            }
-
-            Server& operator=(const Server&) = default;
-
-            Server& operator=(Server&& server) {
-                if (this != &server) {
-                    BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>::operator=(std::move(server));
-                    backlog = server.backlog;
-
-                    server.backlog = -1;
-                }
-                return *this;
-            }
 
             // Return false from the callback to stop listening
             int listen(const std::function<bool(connection_type&, void*)>& cb, int backlog = 128, void* data = nullptr);
@@ -699,8 +674,6 @@ namespace pn {
             Socket() = default;
             Socket(sockfd_t fd):
                 pn::Socket(fd) {}
-            Socket(const struct sockaddr& addr, socklen_t addrlen):
-                pn::Socket(addr, addrlen) {}
             Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 pn::Socket(fd, addr, addrlen) {}
 

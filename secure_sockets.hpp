@@ -41,24 +41,17 @@ namespace pn {
             SecureConnection(sockfd_t fd, SSL* ssl):
                 Connection(fd),
                 ssl(ssl) {}
-            SecureConnection(const struct sockaddr& addr, socklen_t addrlen):
-                Connection(addr, addrlen) {}
             SecureConnection(sockfd_t fd, SSL* ssl, const struct sockaddr& addr, socklen_t addrlen):
                 Connection(fd, addr, addrlen),
                 ssl(ssl) {}
-            SecureConnection(const SecureConnection&) = default;
             SecureConnection(SecureConnection&& conn) {
                 *this = std::move(conn);
             }
 
-            SecureConnection& operator=(const SecureConnection&) = default;
-
             SecureConnection& operator=(SecureConnection&& conn) {
                 if (this != &conn) {
-                    Connection::operator=(std::move(conn));
                     ssl = conn.ssl;
-
-                    conn.ssl = nullptr;
+                    Connection::operator=(std::move(conn));
                 }
                 return *this;
             }
@@ -167,19 +160,14 @@ namespace pn {
             SecureServer(sockfd_t fd, SSL_CTX* ssl_ctx, const struct sockaddr& addr, socklen_t addrlen):
                 Server(fd, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
-            SecureServer(const SecureServer&) = default;
             SecureServer(SecureServer&& server) {
                 *this = std::move(server);
             }
 
-            SecureServer& operator=(const SecureServer&) = default;
-
             SecureServer& operator=(SecureServer&& server) {
                 if (this != &server) {
-                    Server::operator=(std::move(server));
                     ssl_ctx = server.ssl_ctx;
-
-                    server.ssl_ctx = nullptr;
+                    Server::operator=(std::move(server));
                 }
                 return *this;
             }
@@ -213,24 +201,17 @@ namespace pn {
             SecureClient(sockfd_t fd, SSL_CTX* ssl_ctx, SSL* ssl):
                 BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, ssl),
                 ssl_ctx(ssl_ctx) {}
-            SecureClient(const struct sockaddr& addr, socklen_t addrlen):
-                BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
             SecureClient(sockfd_t fd, SSL_CTX* ssl_ctx, SSL* ssl, const struct sockaddr& addr, socklen_t addrlen):
                 BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, ssl, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
-            SecureClient(const SecureClient&) = default;
             SecureClient(SecureClient&& client) {
                 *this = std::move(client);
             }
 
-            SecureClient& operator=(const SecureClient&) = default;
-
             SecureClient& operator=(SecureClient&& client) {
                 if (this != &client) {
-                    BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::operator=(std::move(client));
                     ssl_ctx = client.ssl_ctx;
-
-                    client.ssl_ctx = nullptr;
+                    BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::operator=(std::move(client));
                 }
                 return *this;
             }
