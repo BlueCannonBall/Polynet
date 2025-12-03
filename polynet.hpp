@@ -665,7 +665,7 @@ namespace pn {
 
             Server& operator=(Server&& server) {
                 if (this != &server) {
-                    BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>::operator=(server);
+                    BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>::operator=(std::move(server));
                     backlog = server.backlog;
 
                     server.backlog = -1;

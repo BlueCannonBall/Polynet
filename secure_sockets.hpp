@@ -55,7 +55,7 @@ namespace pn {
 
             SecureConnection& operator=(SecureConnection&& conn) {
                 if (this != &conn) {
-                    Connection::operator=(conn);
+                    Connection::operator=(std::move(conn));
                     ssl = conn.ssl;
 
                     conn.ssl = nullptr;
@@ -176,7 +176,7 @@ namespace pn {
 
             SecureServer& operator=(SecureServer&& server) {
                 if (this != &server) {
-                    Server::operator=(server);
+                    Server::operator=(std::move(server));
                     ssl_ctx = server.ssl_ctx;
 
                     server.ssl_ctx = nullptr;
@@ -227,7 +227,7 @@ namespace pn {
 
             SecureClient& operator=(SecureClient&& client) {
                 if (this != &client) {
-                    BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::operator=(client);
+                    BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::operator=(std::move(client));
                     ssl_ctx = client.ssl_ctx;
 
                     client.ssl_ctx = nullptr;
