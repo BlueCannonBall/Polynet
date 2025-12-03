@@ -284,6 +284,25 @@ namespace pn {
             fd(fd),
             addr(addr),
             addrlen(addrlen) {}
+        Socket(const Socket&) = default;
+        Socket(Socket&& socket) {
+            *this = std::move(socket);
+        }
+
+        Socket& operator=(const Socket&) = default;
+
+        Socket& operator=(Socket&& socket) {
+            if (this != &socket) {
+                fd = socket.fd;
+                addr = socket.addr;
+                addrlen = socket.addrlen;
+
+                socket.fd = PN_INVALID_SOCKFD;
+                socket.addr = {0};
+                socket.addrlen = sizeof socket.addr;
+            }
+            return *this;
+        }
 
         // Don't use this if you are using bind or connect on pn::Server or pn::Client, respectively
         int init(int domain, int type, int protocol) {
@@ -636,6 +655,22 @@ namespace pn {
                 BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
             Server(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
+            Server(const Server&) = default;
+            Server(Server&& server) {
+                *this = std::move(server);
+            }
+
+            Server& operator=(const Server&) = default;
+
+            Server& operator=(Server&& server) {
+                if (this != &server) {
+                    BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>::operator=(server);
+                    backlog = server.backlog;
+
+                    server.backlog = -1;
+                }
+                return *this;
+            }
 
             // Return false from the callback to stop listening
             int listen(const std::function<bool(connection_type&, void*)>& cb, int backlog = 128, void* data = nullptr);

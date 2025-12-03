@@ -46,6 +46,22 @@ namespace pn {
             SecureConnection(sockfd_t fd, SSL* ssl, const struct sockaddr& addr, socklen_t addrlen):
                 Connection(fd, addr, addrlen),
                 ssl(ssl) {}
+            SecureConnection(const SecureConnection&) = default;
+            SecureConnection(SecureConnection&& conn) {
+                *this = std::move(conn);
+            }
+
+            SecureConnection& operator=(const SecureConnection&) = default;
+
+            SecureConnection& operator=(SecureConnection&& conn) {
+                if (this != &conn) {
+                    Connection::operator=(conn);
+                    ssl = conn.ssl;
+
+                    conn.ssl = nullptr;
+                }
+                return *this;
+            }
 
             int ssl_init(SSL_CTX* ssl_ctx) {
                 if (!(ssl = SSL_new(ssl_ctx))) {
@@ -151,6 +167,22 @@ namespace pn {
             SecureServer(sockfd_t fd, SSL_CTX* ssl_ctx, const struct sockaddr& addr, socklen_t addrlen):
                 Server(fd, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
+            SecureServer(const SecureServer&) = default;
+            SecureServer(SecureServer&& server) {
+                *this = std::move(server);
+            }
+
+            SecureServer& operator=(const SecureServer&) = default;
+
+            SecureServer& operator=(SecureServer&& server) {
+                if (this != &server) {
+                    Server::operator=(server);
+                    ssl_ctx = server.ssl_ctx;
+
+                    server.ssl_ctx = nullptr;
+                }
+                return *this;
+            }
 
             int ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type);
 
@@ -186,6 +218,22 @@ namespace pn {
             SecureClient(sockfd_t fd, SSL_CTX* ssl_ctx, SSL* ssl, const struct sockaddr& addr, socklen_t addrlen):
                 BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, ssl, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
+            SecureClient(const SecureClient&) = default;
+            SecureClient(SecureClient&& client) {
+                *this = std::move(client);
+            }
+
+            SecureClient& operator=(const SecureClient&) = default;
+
+            SecureClient& operator=(SecureClient&& client) {
+                if (this != &client) {
+                    BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::operator=(client);
+                    ssl_ctx = client.ssl_ctx;
+
+                    client.ssl_ctx = nullptr;
+                }
+                return *this;
+            }
 
             int ssl_init(StringView hostname, int verify_mode = SSL_VERIFY_PEER, StringView ca_file = {}, StringView ca_path = {});
 
