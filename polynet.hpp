@@ -288,11 +288,12 @@ namespace pn {
 
         Socket& operator=(Socket&& socket) {
             if (this != &socket) {
+                close(false);
                 fd = socket.fd;
                 addr = socket.addr;
                 addrlen = socket.addrlen;
 
-                socket.close();
+                socket.fd = PN_INVALID_SOCKFD;
             }
             return *this;
         }
