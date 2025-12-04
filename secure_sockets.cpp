@@ -87,13 +87,10 @@ namespace pn {
         }
 
         int SecureServer::listen(const std::function<bool(connection_type&, void*)>& cb, int backlog, void* data) { // This function BLOCKS
-            if (this->backlog != backlog || this->backlog == -1) {
-                if (::listen(fd, backlog) == PN_ERROR) {
-                    detail::set_last_ssl_error(detail::get_last_system_error());
-                    detail::set_last_error(PN_ESOCKET);
-                    return PN_ERROR;
-                }
-                this->backlog = backlog;
+            if (::listen(fd, backlog) == PN_ERROR) {
+                detail::set_last_ssl_error(detail::get_last_system_error());
+                detail::set_last_error(PN_ESOCKET);
+                return PN_ERROR;
             }
 
             for (;;) {
