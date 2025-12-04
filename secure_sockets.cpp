@@ -86,7 +86,7 @@ namespace pn {
             return PN_OK;
         }
 
-        int SecureServer::listen(const std::function<bool(connection_type&, void*)>& cb, int backlog, void* data) { // This function BLOCKS
+        int SecureServer::listen(const std::function<bool(connection_type, void*)>& cb, int backlog, void* data) { // This function BLOCKS
             if (::listen(fd, backlog) == PN_ERROR) {
                 detail::set_last_ssl_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
@@ -122,7 +122,7 @@ namespace pn {
                     return PN_ERROR;
                 }
 
-                if (!cb(conn, data)) { // Connections CANNOT be accepted while the callback is blocking
+                if (!cb(std::move(conn), data)) { // Connections CANNOT be accepted while the callback is blocking
                     break;
                 }
             }

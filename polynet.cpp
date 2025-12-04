@@ -242,7 +242,7 @@ namespace pn {
             }
         }
 
-        int Server::listen(const std::function<bool(connection_type&, void*)>& cb, int backlog, void* data) { // This function BLOCKS
+        int Server::listen(const std::function<bool(connection_type, void*)>& cb, int backlog, void* data) { // This function BLOCKS
             if (::listen(fd, backlog) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);
@@ -274,7 +274,7 @@ namespace pn {
 #endif
                 }
 
-                if (!cb(conn, data)) { // Connections CANNOT be accepted while the callback is blocking
+                if (!cb(std::move(conn), data)) { // Connections CANNOT be accepted while the callback is blocking
                     break;
                 }
             }

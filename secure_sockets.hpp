@@ -180,7 +180,7 @@ namespace pn {
                 return Server::close(reset, protocol_layers);
             }
 
-            int listen(const std::function<bool(connection_type&, void*)>& cb, int backlog = 128, void* data = nullptr);
+            int listen(const std::function<bool(connection_type, void*)>& cb, int backlog = 128, void* data = nullptr);
 
             bool is_secure() const override {
                 return ssl_ctx;
