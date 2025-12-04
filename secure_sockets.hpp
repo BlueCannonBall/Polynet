@@ -155,8 +155,6 @@ namespace pn {
             SecureServer(sockfd_t fd, SSL_CTX* ssl_ctx):
                 Server(fd),
                 ssl_ctx(ssl_ctx) {}
-            SecureServer(const struct sockaddr& addr, socklen_t addrlen):
-                Server(addr, addrlen) {}
             SecureServer(sockfd_t fd, SSL_CTX* ssl_ctx, const struct sockaddr& addr, socklen_t addrlen):
                 Server(fd, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
