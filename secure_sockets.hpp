@@ -51,7 +51,7 @@ namespace pn {
             SecureConnection& operator=(SecureConnection&& conn) {
                 if (this != &conn) {
                     Connection::operator=(std::move(conn));
-                    ssl = conn.ssl;
+                    ssl = std::exchange(conn.ssl, nullptr);
                 }
                 return *this;
             }
@@ -86,15 +86,15 @@ namespace pn {
                 return PN_OK;
             }
 
-            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
+            int close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl) {
                     if (protocol_layers & PN_PROTOCOL_LAYER_SSL) {
                         SSL_shutdown(ssl);
                     }
                     SSL_free(ssl);
-                    if (reset) ssl = nullptr;
+                    ssl = nullptr;
                 }
-                return Connection::close(reset, protocol_layers);
+                return Connection::close(protocol_layers);
             }
 
             long send(const void* buf, size_t len) override {
@@ -165,19 +165,19 @@ namespace pn {
             SecureServer& operator=(SecureServer&& server) {
                 if (this != &server) {
                     Server::operator=(std::move(server));
-                    ssl_ctx = server.ssl_ctx;
+                    ssl_ctx = std::exchange(server.ssl_ctx, nullptr);
                 }
                 return *this;
             }
 
             int ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type);
 
-            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
+            int close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl_ctx) {
                     SSL_CTX_free(ssl_ctx);
-                    if (reset) ssl_ctx = nullptr;
+                    ssl_ctx = nullptr;
                 }
-                return Server::close(reset, protocol_layers);
+                return Server::close(protocol_layers);
             }
 
             int listen(const std::function<bool(connection_type, void*)>& cb, int backlog = 128, void* data = nullptr);
@@ -209,7 +209,7 @@ namespace pn {
             SecureClient& operator=(SecureClient&& client) {
                 if (this != &client) {
                     BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::operator=(std::move(client));
-                    ssl_ctx = client.ssl_ctx;
+                    ssl_ctx = std::exchange(client.ssl_ctx, nullptr);
                 }
                 return *this;
             }
@@ -225,19 +225,19 @@ namespace pn {
                 return PN_OK;
             }
 
-            int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
+            int close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl) {
                     if ((protocol_layers & PN_PROTOCOL_LAYER_SSL) && SSL_shutdown(ssl) < 0) {
                         ERR_clear_error();
                     }
                     SSL_free(ssl);
-                    if (reset) ssl = nullptr;
+                    ssl = nullptr;
                 }
                 if (ssl_ctx) {
                     SSL_CTX_free(ssl_ctx);
-                    if (reset) ssl_ctx = nullptr;
+                    ssl_ctx = nullptr;
                 }
-                return Connection::close(reset, protocol_layers);
+                return Connection::close(protocol_layers);
             }
 
             bool is_secure() const override {

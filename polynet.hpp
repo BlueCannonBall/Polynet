@@ -288,18 +288,16 @@ namespace pn {
 
         Socket& operator=(Socket&& socket) {
             if (this != &socket) {
-                close(false);
-                fd = socket.fd;
+                close();
+                fd = std::exchange(socket.fd, PN_INVALID_SOCKFD);
                 addr = socket.addr;
                 addrlen = socket.addrlen;
-
-                socket.fd = PN_INVALID_SOCKFD;
             }
             return *this;
         }
 
         virtual ~Socket() {
-            close(false);
+            close();
         }
 
         // Don't use this if you are using bind or connect on pn::Server or pn::Client, respectively
@@ -340,7 +338,7 @@ namespace pn {
         }
 
         // By default, the closed socket file descriptor is LOST if this function executes successfully
-        virtual int close(bool reset = true, int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) {
+        virtual int close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) {
             if (!is_valid()) {
                 return PN_OK;
             }
@@ -350,7 +348,7 @@ namespace pn {
                 detail::set_last_error(PN_ESOCKET);
                 return PN_ERROR;
             }
-            if (reset) fd = PN_INVALID_SOCKFD;
+            fd = PN_INVALID_SOCKFD;
             return PN_OK;
         }
 
@@ -630,11 +628,8 @@ namespace pn {
             BufReceiver& operator=(BufReceiver&& buf_receiver) {
                 if (this != &buf_receiver) {
                     buf = std::move(buf_receiver.buf);
-                    cursor = buf_receiver.cursor;
-                    capacity = buf_receiver.capacity;
-
-                    buf_receiver.cursor = 0;
-                    buf_receiver.capacity = 4'000;
+                    cursor = std::exchange(buf_receiver.cursor, 0);
+                    capacity = std::exchange(buf_receiver.capacity, 4'000);
                 }
                 return *this;
             }
