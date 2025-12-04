@@ -1,5 +1,5 @@
 # Polynet
-Polynet is a simple, cross-platform networking abstraction for C++.
+Polynet is a cross-platform networking abstraction for C++ with TLS support.
 
 ## Usage
 Polynet is designed to be similar to Berkeley sockets while using C++ features such as objects, methods, inheritance, and templates. Polynet supports TCP and UDP.

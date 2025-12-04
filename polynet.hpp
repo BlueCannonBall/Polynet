@@ -656,8 +656,6 @@ namespace pn {
             Server() = default;
             Server(sockfd_t fd):
                 BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(fd) {}
-            Server(const struct sockaddr& addr, socklen_t addrlen):
-                BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(addr, addrlen) {}
             Server(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
 
