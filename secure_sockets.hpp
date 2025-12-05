@@ -44,11 +44,11 @@ namespace pn {
             SecureConnection(sockfd_t fd, SSL* ssl, const struct sockaddr& addr, socklen_t addrlen):
                 Connection(fd, addr, addrlen),
                 ssl(ssl) {}
-            SecureConnection(SecureConnection&& conn) {
+            SecureConnection(SecureConnection&& conn) noexcept {
                 *this = std::move(conn);
             }
 
-            SecureConnection& operator=(SecureConnection&& conn) {
+            SecureConnection& operator=(SecureConnection&& conn) noexcept {
                 if (this != &conn) {
                     Connection::operator=(std::move(conn));
                     ssl = std::exchange(conn.ssl, nullptr);
@@ -158,11 +158,11 @@ namespace pn {
             SecureServer(sockfd_t fd, SSL_CTX* ssl_ctx, const struct sockaddr& addr, socklen_t addrlen):
                 Server(fd, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
-            SecureServer(SecureServer&& server) {
+            SecureServer(SecureServer&& server) noexcept {
                 *this = std::move(server);
             }
 
-            SecureServer& operator=(SecureServer&& server) {
+            SecureServer& operator=(SecureServer&& server) noexcept {
                 if (this != &server) {
                     Server::operator=(std::move(server));
                     ssl_ctx = std::exchange(server.ssl_ctx, nullptr);
@@ -202,11 +202,11 @@ namespace pn {
             SecureClient(sockfd_t fd, SSL_CTX* ssl_ctx, SSL* ssl, const struct sockaddr& addr, socklen_t addrlen):
                 BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, ssl, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
-            SecureClient(SecureClient&& client) {
+            SecureClient(SecureClient&& client) noexcept {
                 *this = std::move(client);
             }
 
-            SecureClient& operator=(SecureClient&& client) {
+            SecureClient& operator=(SecureClient&& client) noexcept {
                 if (this != &client) {
                     BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::operator=(std::move(client));
                     ssl_ctx = std::exchange(client.ssl_ctx, nullptr);

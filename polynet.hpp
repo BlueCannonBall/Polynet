@@ -282,11 +282,11 @@ namespace pn {
             fd(fd),
             addr(addr),
             addrlen(addrlen) {}
-        Socket(Socket&& socket) {
+        Socket(Socket&& socket) noexcept {
             *this = std::move(socket);
         }
 
-        Socket& operator=(Socket&& socket) {
+        Socket& operator=(Socket&& socket) noexcept {
             if (this != &socket) {
                 close();
                 fd = std::exchange(socket.fd, PN_INVALID_SOCKFD);
@@ -621,11 +621,11 @@ namespace pn {
 
             BufReceiver(size_t capacity = 4'000):
                 capacity(capacity) {}
-            BufReceiver(BufReceiver&& buf_receiver) {
+            BufReceiver(BufReceiver&& buf_receiver) noexcept {
                 *this = std::move(buf_receiver);
             }
 
-            BufReceiver& operator=(BufReceiver&& buf_receiver) {
+            BufReceiver& operator=(BufReceiver&& buf_receiver) noexcept {
                 if (this != &buf_receiver) {
                     buf = std::move(buf_receiver.buf);
                     cursor = std::exchange(buf_receiver.cursor, 0);
