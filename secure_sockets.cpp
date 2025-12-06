@@ -110,6 +110,7 @@ namespace pn {
                         detail::set_last_error(PN_ESOCKET);
                         return PN_ERROR;
 
+                    case EINTR:
                     case EPERM:
                     case EPROTO:
                     case ECONNABORTED:
