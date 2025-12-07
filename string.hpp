@@ -37,25 +37,25 @@ namespace pn {
             std::basic_string_view<CharT, Traits>(str) {}
         BasicStringView(decltype(nullptr)) = delete;
         template <typename T>
-        BasicStringView(const T& str):
+        constexpr BasicStringView(const T& str):
             std::basic_string_view<CharT, Traits>(str.c_str(), str.size()) {}
 
-        const CharT* c_str() const {
+        constexpr const CharT* c_str() const noexcept {
             return this->data();
         }
 
-        std::basic_string_view<CharT, Traits> substr(size_t pos = 0) const {
+        constexpr std::basic_string_view<CharT, Traits> substr(size_t pos = 0) const {
             return std::basic_string_view<CharT, Traits>::substr(pos);
         }
 
         template <typename Alloc = std::allocator<CharT>>
-        std::basic_string<CharT, Traits, Alloc> substr(size_t pos, size_t count) const {
+        constexpr std::basic_string<CharT, Traits, Alloc> substr(size_t pos, size_t count) const {
             auto ret = std::basic_string_view<CharT, Traits>::substr(pos, count);
             return std::basic_string<CharT, Traits, Alloc>(ret.begin(), ret.end());
         }
 
     private:
-        // This function destroyes the guarantee of null-termination
+        // This function destroys the guarantee of null-termination
         using std::basic_string_view<CharT, Traits>::remove_suffix;
     };
 
