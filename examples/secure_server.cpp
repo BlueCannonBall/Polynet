@@ -24,7 +24,7 @@ int main() {
             }
 
             char req[32000];
-            long result;
+            pn::ssize_t result;
             if ((result = conn.recv(req, 32000)) == PN_ERROR) {
                 std::cerr << "Error: " << pn::universal_strerror() << std::endl;
                 conn.close();

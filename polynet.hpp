@@ -1,11 +1,9 @@
 #ifndef POLYNET_HPP_
 #define POLYNET_HPP_
 
-// System includes
 #ifdef _WIN32
     #define WIN32_LEAN_AND_MEAN
     #define NOMINMAX
-
     #ifndef WINVER
         #define WINVER 0x0A00
     #endif
@@ -16,8 +14,6 @@
     #include <windows.h>
     #include <winsock2.h>
     #include <ws2tcpip.h>
-
-    #pragma comment(lib, "ws2_32.lib")
 #else
     #include <arpa/inet.h>
     #include <errno.h>
@@ -32,14 +28,13 @@
     #include <sys/socket.h>
     #include <unistd.h>
 #endif
-
-// Other includes
 #include "string.hpp"
 #include <functional>
 #include <iostream>
 #include <stddef.h>
 #include <string.h>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #if __has_include(<endian.h>)
@@ -54,8 +49,6 @@
 #endif
 
 #define PN_OK 0
-
-// Bridged
 #ifdef _WIN32
     #define PN_ERROR          SOCKET_ERROR
     #define PN_INVALID_SOCKFD INVALID_SOCKET
@@ -94,11 +87,6 @@
     #endif
 #endif
 
-// Protocol layers
-#define PN_PROTOCOL_LAYER_DEFAULT 0x0000FFFF // The lower half of the protocol layers bitmask is reserved
-#define PN_PROTOCOL_LAYER_SYSTEM  1          // for protocol layers that are closed by default, while the upper
-                                             // half is for those that aren't
-
 // Errors
 #define PN_ESUCCESS  0
 #define PN_ESOCKET   1
@@ -108,12 +96,18 @@
 #define PN_ESSL      5
 #define PN_EUSERCB   6
 
+// Protocol layers
+#define PN_PROTOCOL_LAYER_DEFAULT 0x0000FFFF // The lower half of the protocol layers bitmask is reserved
+#define PN_PROTOCOL_LAYER_SYSTEM  1          // for protocol layers that are closed by default, while the upper
+                                             // half is for those that aren't
+
 namespace pn {
 #ifdef _WIN32
     typedef SOCKET sockfd_t;
 #else
     typedef int sockfd_t;
 #endif
+    typedef std::make_signed_t<size_t> ssize_t;
 
     namespace detail {
         extern thread_local int last_error;
@@ -550,9 +544,9 @@ namespace pn {
             Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 Socket(fd, addr, addrlen) {}
 
-            virtual long send(const void* buf, size_t len) {
+            virtual ssize_t send(const void* buf, size_t len) {
                 for (;;) {
-                    long result;
+                    ssize_t result;
                     if ((result = ::send(fd, (const char*) buf, len, 0)) == PN_ERROR) {
 #ifndef _WIN32
                         if (detail::get_last_system_error() == EINTR) {
@@ -567,11 +561,11 @@ namespace pn {
                 }
             }
 
-            virtual long sendall(const void* buf, size_t len);
+            virtual ssize_t sendall(const void* buf, size_t len);
 
-            virtual long recv(void* buf, size_t len) {
+            virtual ssize_t recv(void* buf, size_t len) {
                 for (;;) {
-                    long result;
+                    ssize_t result;
                     if ((result = ::recv(fd, (char*) buf, len, 0)) == PN_ERROR) {
 #ifndef _WIN32
                         if (detail::get_last_system_error() == EINTR) {
@@ -586,9 +580,9 @@ namespace pn {
                 }
             }
 
-            virtual long peek(void* buf, size_t len) {
+            virtual ssize_t peek(void* buf, size_t len) {
                 for (;;) {
-                    long result;
+                    ssize_t result;
                     if ((result = ::recv(fd, (char*) buf, len, MSG_PEEK)) == PN_ERROR) {
 #ifndef _WIN32
                         if (detail::get_last_system_error() == EINTR) {
@@ -603,7 +597,7 @@ namespace pn {
                 }
             }
 
-            virtual long recvall(void* buf, size_t len);
+            virtual ssize_t recvall(void* buf, size_t len);
         };
 
         class BufReceiver {
@@ -638,9 +632,9 @@ namespace pn {
                 return buf.size() - cursor;
             }
 
-            long recv(Connection& conn, void* ret, size_t len);
-            long peek(Connection& conn, void* ret, size_t len);
-            long recvall(Connection& conn, void* ret, size_t len);
+            ssize_t recv(Connection& conn, void* ret, size_t len);
+            ssize_t peek(Connection& conn, void* ret, size_t len);
+            ssize_t recvall(Connection& conn, void* ret, size_t len);
 
             void rewind(const void* data, size_t len);
         };
@@ -671,9 +665,9 @@ namespace pn {
             Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 pn::Socket(fd, addr, addrlen) {}
 
-            virtual long sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
+            virtual ssize_t sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 for (;;) {
-                    long result;
+                    ssize_t result;
                     if ((result = ::sendto(fd, (const char*) buf, len, flags, dest_addr, addrlen)) == PN_ERROR) {
 #ifndef _WIN32
                         if (detail::get_last_system_error() == EINTR) {
@@ -688,9 +682,9 @@ namespace pn {
                 }
             }
 
-            virtual long recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
+            virtual ssize_t recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
                 for (;;) {
-                    long result;
+                    ssize_t result;
                     if ((result = ::recvfrom(fd, (char*) buf, len, flags, src_addr, addrlen)) == PN_ERROR) {
 #ifndef _WIN32
                         if (detail::get_last_system_error() == EINTR) {

@@ -25,11 +25,11 @@ namespace pn {
             }
         }
 
-        long SecureConnection::sendall(const void* buf, size_t len) {
+        ssize_t SecureConnection::sendall(const void* buf, size_t len) {
             if (ssl) {
                 size_t sent = 0;
                 while (sent < len) {
-                    long result;
+                    ssize_t result;
                     if ((result = send((const char*) buf + sent, len - sent)) == PN_ERROR) {
                         if (sent) {
                             break;
@@ -43,11 +43,11 @@ namespace pn {
             return Connection::sendall(buf, len);
         }
 
-        long SecureConnection::recvall(void* buf, size_t len) {
+        ssize_t SecureConnection::recvall(void* buf, size_t len) {
             if (ssl) {
                 size_t received = 0;
                 while (received < len) {
-                    if (long result = recv((char*) buf + received, len - received); result == PN_ERROR) {
+                    if (ssize_t result = recv((char*) buf + received, len - received); result == PN_ERROR) {
                         if (received) {
                             break;
                         }

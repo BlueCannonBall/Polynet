@@ -107,10 +107,10 @@ namespace pn {
     }
 
     namespace tcp {
-        long Connection::sendall(const void* buf, size_t len) {
+        ssize_t Connection::sendall(const void* buf, size_t len) {
             size_t sent = 0;
             while (sent < len) {
-                if (long result = send((const char*) buf + sent, len - sent); result == PN_ERROR) {
+                if (ssize_t result = send((const char*) buf + sent, len - sent); result == PN_ERROR) {
                     if (sent) {
                         break;
                     }
@@ -122,10 +122,10 @@ namespace pn {
             return sent;
         }
 
-        long Connection::recvall(void* buf, size_t len) {
+        ssize_t Connection::recvall(void* buf, size_t len) {
             size_t received = 0;
             while (received < len) {
-                if (long result = recv((char*) buf + received, len - received); result == PN_ERROR) {
+                if (ssize_t result = recv((char*) buf + received, len - received); result == PN_ERROR) {
                     if (received) {
                         break;
                     }
@@ -139,7 +139,7 @@ namespace pn {
             return received;
         }
 
-        long BufReceiver::recv(Connection& conn, void* ret, size_t len) {
+        ssize_t BufReceiver::recv(Connection& conn, void* ret, size_t len) {
             if (available()) {
                 size_t received = std::min(len, available());
                 memcpy(ret, buf.data() + cursor, received);
@@ -156,7 +156,7 @@ namespace pn {
                 return conn.recv(ret, len);
             }
 
-            long result;
+            ssize_t result;
             buf.resize(capacity);
             if ((result = conn.recv(buf.data(), capacity)) == PN_ERROR) {
                 clear();
@@ -179,7 +179,7 @@ namespace pn {
             return received;
         }
 
-        long BufReceiver::peek(Connection& conn, void* ret, size_t len) {
+        ssize_t BufReceiver::peek(Connection& conn, void* ret, size_t len) {
             if (available()) {
                 size_t to_copy = std::min(len, available());
                 memcpy(ret, buf.data() + cursor, to_copy);
@@ -190,7 +190,7 @@ namespace pn {
                 return conn.peek(ret, len);
             }
 
-            long result;
+            ssize_t result;
             buf.resize(capacity);
             if ((result = conn.recv(buf.data(), capacity)) == PN_ERROR) {
                 clear();
@@ -207,10 +207,10 @@ namespace pn {
             return received;
         }
 
-        long BufReceiver::recvall(Connection& conn, void* ret, size_t len) {
+        ssize_t BufReceiver::recvall(Connection& conn, void* ret, size_t len) {
             size_t received = 0;
             while (received < len) {
-                if (long result = recv(conn, (char*) ret + received, len - received); result == PN_ERROR) {
+                if (ssize_t result = recv(conn, (char*) ret + received, len - received); result == PN_ERROR) {
                     if (received) {
                         break;
                     }
@@ -242,7 +242,7 @@ namespace pn {
             }
         }
 
-        int Server::listen(const std::function<bool(connection_type)>& cb, int backlog) { // This function BLOCKS
+        int Server::listen(const std::function<bool(connection_type)>& cb, int backlog) {
             if (::listen(fd, backlog) == PN_ERROR) {
                 detail::set_last_socket_error(detail::get_last_system_error());
                 detail::set_last_error(PN_ESOCKET);

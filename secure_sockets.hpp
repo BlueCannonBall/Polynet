@@ -95,7 +95,7 @@ namespace pn {
                 return Connection::close(protocol_layers);
             }
 
-            long send(const void* buf, size_t len) override {
+            ssize_t send(const void* buf, size_t len) override {
                 if (ssl) {
                     ERR_clear_error();
                     if (int result = SSL_write(ssl, buf, len); result <= 0) {
@@ -108,9 +108,9 @@ namespace pn {
                 return Connection::send(buf, len);
             }
 
-            long sendall(const void* buf, size_t len) override;
+            ssize_t sendall(const void* buf, size_t len) override;
 
-            long recv(void* buf, size_t len) override {
+            ssize_t recv(void* buf, size_t len) override {
                 if (ssl) {
                     ERR_clear_error();
                     if (int result = SSL_read(ssl, buf, len); result < 0) {
@@ -123,7 +123,7 @@ namespace pn {
                 return Connection::recv(buf, len);
             }
 
-            long peek(void* buf, size_t len) override {
+            ssize_t peek(void* buf, size_t len) override {
                 if (ssl) {
                     ERR_clear_error();
                     if (int result = SSL_peek(ssl, buf, len); result < 0) {
@@ -136,7 +136,7 @@ namespace pn {
                 return Connection::peek(buf, len);
             }
 
-            long recvall(void* buf, size_t len) override;
+            ssize_t recvall(void* buf, size_t len) override;
 
             bool is_secure() const override {
                 return ssl;
