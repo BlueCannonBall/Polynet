@@ -88,9 +88,7 @@ namespace pn {
 
             int close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl) {
-                    if (protocol_layers & PN_PROTOCOL_LAYER_SSL) {
-                        SSL_shutdown(ssl);
-                    }
+                    if (protocol_layers & PN_PROTOCOL_LAYER_SSL) SSL_shutdown(ssl);
                     SSL_free(ssl);
                     ssl = nullptr;
                 }
@@ -227,9 +225,7 @@ namespace pn {
 
             int close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl) {
-                    if ((protocol_layers & PN_PROTOCOL_LAYER_SSL) && SSL_shutdown(ssl) < 0) {
-                        ERR_clear_error();
-                    }
+                    if (protocol_layers & PN_PROTOCOL_LAYER_SSL) SSL_shutdown(ssl);
                     SSL_free(ssl);
                     ssl = nullptr;
                 }
