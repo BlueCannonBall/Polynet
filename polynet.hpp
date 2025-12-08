@@ -601,11 +601,11 @@ namespace pn {
 
         class BufReceiver {
         protected:
-            std::vector<char> buf;
+            std::vector<char> data;
             size_t cursor = 0;
 
             void clear() {
-                buf.clear();
+                data.clear();
                 cursor = 0;
             }
 
@@ -620,7 +620,7 @@ namespace pn {
 
             BufReceiver& operator=(BufReceiver&& buf_receiver) noexcept {
                 if (this != &buf_receiver) {
-                    buf = std::move(buf_receiver.buf);
+                    data = std::move(buf_receiver.data);
                     cursor = std::exchange(buf_receiver.cursor, 0);
                     capacity = std::exchange(buf_receiver.capacity, 4'000);
                 }
@@ -628,13 +628,12 @@ namespace pn {
             }
 
             size_t available() const {
-                return buf.size() - cursor;
+                return data.size() - cursor;
             }
 
             ssize_t recv(Connection& conn, void* buf, size_t len);
             ssize_t peek(Connection& conn, void* buf, size_t len);
             ssize_t recvall(Connection& conn, void* buf, size_t len);
-
             void rewind(const void* buf, size_t len);
         };
 

@@ -142,7 +142,7 @@ namespace pn {
         ssize_t BufReceiver::recv(Connection& conn, void* buf, size_t len) {
             if (available()) {
                 size_t received = std::min(len, available());
-                memcpy(buf, this->buf.data() + cursor, received);
+                memcpy(buf, data.data() + cursor, received);
                 cursor += received;
 
                 if (!available()) {
@@ -157,19 +157,19 @@ namespace pn {
             }
 
             ssize_t result;
-            this->buf.resize(capacity);
-            if ((result = conn.recv(this->buf.data(), capacity)) == PN_ERROR) {
+            data.resize(capacity);
+            if ((result = conn.recv(data.data(), capacity)) == PN_ERROR) {
                 clear();
                 return PN_ERROR;
             } else if (!result) {
                 clear();
                 return 0;
             }
-            this->buf.resize(result);
+            data.resize(result);
             cursor = 0;
 
             size_t received = std::min<size_t>(len, result);
-            memcpy(buf, this->buf.data(), received);
+            memcpy(buf, data.data(), received);
             cursor += received;
 
             if (!available()) {
@@ -182,7 +182,7 @@ namespace pn {
         ssize_t BufReceiver::peek(Connection& conn, void* buf, size_t len) {
             if (available()) {
                 size_t to_copy = std::min(len, available());
-                memcpy(buf, this->buf.data() + cursor, to_copy);
+                memcpy(buf, data.data() + cursor, to_copy);
                 return to_copy;
             }
 
@@ -191,19 +191,19 @@ namespace pn {
             }
 
             ssize_t result;
-            this->buf.resize(capacity);
-            if ((result = conn.recv(this->buf.data(), capacity)) == PN_ERROR) {
+            data.resize(capacity);
+            if ((result = conn.recv(data.data(), capacity)) == PN_ERROR) {
                 clear();
                 return PN_ERROR;
             } else if (!result) {
                 clear();
                 return 0;
             }
-            this->buf.resize(result);
+            data.resize(result);
             cursor = 0;
 
             size_t received = std::min<size_t>(len, result);
-            memcpy(buf, this->buf.data(), received);
+            memcpy(buf, data.data(), received);
             return received;
         }
 
@@ -228,15 +228,14 @@ namespace pn {
             if (size) {
                 if (cursor >= size) {
                     cursor -= size;
-                    memcpy(this->buf.data() + cursor, buf, size);
+                    memcpy(data.data() + cursor, buf, size);
                 } else {
-                    std::vector<char> new_buf;
-                    new_buf.reserve(size + available() + capacity);
+                    std::vector<char> new_data;
+                    new_data.reserve(size + available() + capacity);
+                    new_data.insert(new_data.end(), (const char*) buf, (const char*) buf + size);
+                    new_data.insert(new_data.end(), data.begin() + cursor, data.end());
 
-                    new_buf.insert(new_buf.end(), (const char*) buf, (const char*) buf + size);
-                    new_buf.insert(new_buf.end(), this->buf.begin() + cursor, this->buf.end());
-
-                    buf = std::move(buf);
+                    data = std::move(new_data);
                     cursor = 0;
                 }
             }
