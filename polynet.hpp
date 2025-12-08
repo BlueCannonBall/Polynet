@@ -97,9 +97,9 @@
 #define PN_EUSERCB   6
 
 // Protocol layers
-#define PN_PROTOCOL_LAYER_DEFAULT 0x0000FFFF // The lower half of the protocol layers bitmask is reserved
-#define PN_PROTOCOL_LAYER_SYSTEM  1          // for protocol layers that are closed by default, while the upper
-                                             // half is for those that aren't
+#define PN_PROTOCOL_LAYER_DEFAULT 0x0000FFFF // The lower half of the bitmask is reserved for protocol
+#define PN_PROTOCOL_LAYER_SYSTEM  1          // layers that are closed by default, while the upper half
+                                             // is for those that aren't
 
 namespace pn {
 #ifdef _WIN32
@@ -108,6 +108,10 @@ namespace pn {
     typedef int sockfd_t;
 #endif
     typedef std::make_signed_t<size_t> ssize_t;
+
+#ifdef _WIN32
+    extern WSADATA wsa_data;
+#endif
 
     namespace detail {
         extern thread_local int last_error;
@@ -143,10 +147,6 @@ namespace pn {
 #endif
         }
     } // namespace detail
-
-#ifdef _WIN32
-    extern WSADATA wsa_data;
-#endif
 
     template <typename T = std::ostream>
     inline int init(bool banner = false, T& out = std::cerr) {
