@@ -346,16 +346,16 @@ namespace pn {
             return PN_OK;
         }
 
-        virtual bool is_secure() const {
-            return false;
-        }
-
         bool is_valid() const {
             return fd != PN_INVALID_SOCKFD;
         }
 
         operator bool() const {
             return is_valid();
+        }
+
+        virtual bool is_secure() const {
+            return false;
         }
 
         bool operator==(const Socket& socket) const {

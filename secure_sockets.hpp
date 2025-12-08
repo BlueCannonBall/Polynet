@@ -70,13 +70,6 @@ namespace pn {
                 return PN_OK;
             }
 
-            void ssl_reset(bool reset_ptr = true, bool validity_check = true) {
-                if (!validity_check || ssl) {
-                    SSL_free(ssl);
-                    if (reset_ptr) ssl = nullptr;
-                }
-            }
-
             int ssl_accept() {
                 ERR_clear_error();
                 if (int result = SSL_accept(ssl); result <= 0) {
@@ -93,6 +86,10 @@ namespace pn {
                     ssl = nullptr;
                 }
                 return Connection::close(protocol_layers);
+            }
+
+            bool is_secure() const override {
+                return ssl;
             }
 
             ssize_t send(const void* buf, size_t len) override {
@@ -137,10 +134,6 @@ namespace pn {
             }
 
             ssize_t recvall(void* buf, size_t len) override;
-
-            bool is_secure() const override {
-                return ssl;
-            }
         };
 
         class SecureServer : public Server {
@@ -178,11 +171,11 @@ namespace pn {
                 return Server::close(protocol_layers);
             }
 
-            int listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
-
             bool is_secure() const override {
                 return ssl_ctx;
             }
+
+            int listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
         };
 
         class SecureClient : public BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP> {
