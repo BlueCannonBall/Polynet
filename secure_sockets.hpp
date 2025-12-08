@@ -105,8 +105,6 @@ namespace pn {
                 return Connection::send(buf, len);
             }
 
-            ssize_t sendall(const void* buf, size_t len) override;
-
             ssize_t recv(void* buf, size_t len) override {
                 if (ssl) {
                     ERR_clear_error();
@@ -132,8 +130,6 @@ namespace pn {
                 }
                 return Connection::peek(buf, len);
             }
-
-            ssize_t recvall(void* buf, size_t len) override;
         };
 
         class SecureServer : public Server {

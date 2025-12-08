@@ -25,44 +25,6 @@ namespace pn {
             }
         }
 
-        ssize_t SecureConnection::sendall(const void* buf, size_t len) {
-            if (ssl) {
-                size_t sent = 0;
-                while (sent < len) {
-                    ssize_t result;
-                    if ((result = send((const char*) buf + sent, len - sent)) == PN_ERROR) {
-                        if (sent) {
-                            break;
-                        }
-                        return PN_ERROR;
-                    }
-                    sent += result;
-                }
-                return sent;
-            }
-            return Connection::sendall(buf, len);
-        }
-
-        ssize_t SecureConnection::recvall(void* buf, size_t len) {
-            if (ssl) {
-                size_t received = 0;
-                while (received < len) {
-                    if (ssize_t result = recv((char*) buf + received, len - received); result == PN_ERROR) {
-                        if (received) {
-                            break;
-                        }
-                        return PN_ERROR;
-                    } else if (!result) {
-                        break;
-                    } else {
-                        received += result;
-                    }
-                }
-                return received;
-            }
-            return Connection::recvall(buf, len);
-        }
-
         int SecureServer::ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type) {
             if (!(ssl_ctx = SSL_CTX_new(TLS_server_method()))) {
                 detail::set_last_ssl_error(detail::get_last_ssl_error());

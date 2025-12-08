@@ -561,8 +561,6 @@ namespace pn {
                 }
             }
 
-            virtual ssize_t sendall(const void* buf, size_t len);
-
             virtual ssize_t recv(void* buf, size_t len) {
                 for (;;) {
                     ssize_t result;
@@ -597,7 +595,8 @@ namespace pn {
                 }
             }
 
-            virtual ssize_t recvall(void* buf, size_t len);
+            ssize_t sendall(const void* buf, size_t len);
+            ssize_t recvall(void* buf, size_t len);
         };
 
         class BufReceiver {
@@ -632,11 +631,11 @@ namespace pn {
                 return buf.size() - cursor;
             }
 
-            ssize_t recv(Connection& conn, void* ret, size_t len);
-            ssize_t peek(Connection& conn, void* ret, size_t len);
-            ssize_t recvall(Connection& conn, void* ret, size_t len);
+            ssize_t recv(Connection& conn, void* buf, size_t len);
+            ssize_t peek(Connection& conn, void* buf, size_t len);
+            ssize_t recvall(Connection& conn, void* buf, size_t len);
 
-            void rewind(const void* data, size_t len);
+            void rewind(const void* buf, size_t len);
         };
 
         class Server : public BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP> {
