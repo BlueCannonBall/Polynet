@@ -16,7 +16,7 @@ int main() {
         return 1;
     }
 
-    if (server.listen([](pn::tcp::SecureConnection& conn, void*) {
+    if (server.listen([](pn::tcp::SecureConnection conn) {
             // This is only necessary for secure servers
             if (conn.ssl_accept() == PN_ERROR) {
                 std::cerr << "Error: " << pn::universal_strerror() << std::endl;
