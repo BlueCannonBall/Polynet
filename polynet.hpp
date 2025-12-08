@@ -264,10 +264,9 @@ namespace pn {
     class Socket {
     public:
         sockfd_t fd = PN_INVALID_SOCKFD;
-        struct sockaddr addr; // Corresponds to the address to which
-        socklen_t addrlen;    // the server is bound to for servers,
-                              // or the server to which the client is
-                              // connected to for clients
+        struct sockaddr addr;            // The address corresponds to the address to which
+        socklen_t addrlen = sizeof addr; // the server is bound to for servers, or the address
+                                         // to which the client is connected to for clients
 
         Socket() = default;
         Socket(sockfd_t fd):
