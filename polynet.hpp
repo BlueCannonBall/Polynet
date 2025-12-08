@@ -656,7 +656,7 @@ namespace pn {
                 BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
 
             // Return false from the callback to stop listening
-            int listen(const std::function<bool(connection_type, void*)>& cb, int backlog = 128, void* data = nullptr);
+            int listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
         };
 
         using Client = BasicClient<Connection, SOCK_STREAM, IPPROTO_TCP>;
