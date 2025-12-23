@@ -36,8 +36,8 @@ namespace pn {
         constexpr BasicStringView(const CharT* str = empty_string()):
             std::basic_string_view<CharT, Traits>(str) {}
         BasicStringView(decltype(nullptr)) = delete;
-        template <typename T>
-        constexpr BasicStringView(const T& str):
+        template <typename Alloc>
+        constexpr BasicStringView(const std::basic_string<CharT, Traits, Alloc>& str):
             std::basic_string_view<CharT, Traits>(str.c_str(), str.size()) {}
 
         constexpr const CharT* c_str() const noexcept {
