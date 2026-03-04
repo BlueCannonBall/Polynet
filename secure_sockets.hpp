@@ -48,6 +48,10 @@ namespace pn {
                 *this = std::move(conn);
             }
 
+            ~SecureConnection() {
+                close();
+            }
+
             SecureConnection& operator=(SecureConnection&& conn) noexcept {
                 if (this != &conn) {
                     Connection::operator=(std::move(conn));
@@ -149,6 +153,10 @@ namespace pn {
                 *this = std::move(server);
             }
 
+            ~SecureServer() {
+                close();
+            }
+
             SecureServer& operator=(SecureServer&& server) noexcept {
                 if (this != &server) {
                     Server::operator=(std::move(server));
@@ -191,6 +199,10 @@ namespace pn {
                 ssl_ctx(ssl_ctx) {}
             SecureClient(SecureClient&& client) noexcept {
                 *this = std::move(client);
+            }
+
+            ~SecureClient() {
+                close();
             }
 
             SecureClient& operator=(SecureClient&& client) noexcept {
