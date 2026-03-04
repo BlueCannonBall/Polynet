@@ -605,7 +605,6 @@ namespace pn {
 
             void clear() {
                 data.clear();
-                data.shrink_to_fit();
                 cursor = 0;
             }
 
