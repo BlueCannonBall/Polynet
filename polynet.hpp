@@ -24,14 +24,15 @@
     #include <netinet/tcp.h>
     #include <netinet/udp.h>
     #include <signal.h>
+    #include <stddef.h>
     #include <stdint.h>
     #include <sys/socket.h>
     #include <unistd.h>
 #endif
+#include "error.hpp"
 #include "string.hpp"
 #include <functional>
 #include <iostream>
-#include <stddef.h>
 #include <string.h>
 #include <string>
 #include <type_traits>
@@ -87,15 +88,6 @@
     #endif
 #endif
 
-// Errors
-#define PN_ESUCCESS  0
-#define PN_ESOCKET   1
-#define PN_EAI       2
-#define PN_EBADADDRS 3
-#define PN_EPTON     4
-#define PN_ESSL      5
-#define PN_EUSERCB   6
-
 // Protocol layers
 #define PN_PROTOCOL_LAYER_DEFAULT 0x0000FFFF // The lower half of the bitmask is reserved for protocol
 #define PN_PROTOCOL_LAYER_SYSTEM  1          // layers that are closed by default, while the upper half
@@ -114,31 +106,6 @@ namespace pn {
 #endif
 
     namespace detail {
-        extern thread_local int last_error;
-        extern thread_local int last_socket_error;
-        extern thread_local int last_gai_error;
-
-        inline void set_last_error(int error) {
-            last_error = error;
-        }
-
-        inline void set_last_socket_error(int error) {
-            last_socket_error = error;
-        }
-
-        inline void set_last_gai_error(int error) {
-            last_gai_error = error;
-        }
-
-        // Returns last Winsock error on Windows
-        inline int get_last_system_error() {
-#ifdef _WIN32
-            return WSAGetLastError();
-#else
-            return errno;
-#endif
-        }
-
         inline int closesocket(sockfd_t fd) {
 #ifdef _WIN32
             return ::closesocket(fd);
@@ -149,7 +116,7 @@ namespace pn {
     } // namespace detail
 
     template <typename T = std::ostream>
-    inline int init(bool banner = false, T& out = std::cerr) {
+    inline Status init(bool banner = false, T& out = std::cerr) {
         if (banner) {
 #ifdef _WIN32
             out << "\x1b[1m+--+ +--+ |   |  | +--. +-- -----\x1b[0m\n"
@@ -164,59 +131,26 @@ namespace pn {
 
 #ifdef _WIN32
         if (int result = WSAStartup(MAKEWORD(2, 2), &wsa_data); result != PN_OK) {
-            detail::set_last_socket_error(result);
-            detail::set_last_error(PN_ESOCKET);
-            return PN_ERROR;
+            return std::unexpected(make_socket_error(result, "initialize Winsock"));
         }
 #else
         if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
-            detail::set_last_socket_error(detail::get_last_system_error());
-            detail::set_last_error(PN_ESOCKET);
-            return PN_ERROR;
+            return std::unexpected(make_last_socket_error("ignore SIGPIPE"));
         }
 #endif
-        return PN_OK;
+        return {};
     }
 
-    int quit();
+    Status quit();
 
-    inline int get_last_error() {
-        return detail::last_error;
-    }
-
-    std::string strerror(int error = get_last_error());
-
-    inline int get_last_socket_error() {
-        return detail::last_socket_error;
-    }
-
-    // Invalid error numbers are not tolerated
-    std::string socket_strerror(int error = get_last_socket_error());
-
-    inline int get_last_gai_error() {
-        return detail::last_gai_error;
-    }
-
-    inline std::string gai_strerror(int error = get_last_gai_error()) {
-#ifdef _WIN32
-        return socket_strerror(error);
-#else
-        return ::gai_strerror(error);
-#endif
-    }
-
-    std::string universal_strerror();
-
-    inline int getaddrinfo(StringView hostname, StringView port, const struct addrinfo* hints, struct addrinfo** ret) {
+    inline Status getaddrinfo(StringView hostname, StringView port, const struct addrinfo* hints, struct addrinfo** ret) {
         if (int result = ::getaddrinfo(hostname.c_str(), port.c_str(), hints, ret); result != PN_OK) {
-            detail::set_last_gai_error(result);
-            detail::set_last_error(PN_EAI);
-            return PN_ERROR;
+            return std::unexpected(make_address_info_error(result, "resolve address"));
         }
-        return PN_OK;
+        return {};
     }
 
-    inline int getaddrinfo(StringView hostname, unsigned short port, const struct addrinfo* hints, struct addrinfo** ret) {
+    inline Status getaddrinfo(StringView hostname, unsigned short port, const struct addrinfo* hints, struct addrinfo** ret) {
         std::string str_port = std::to_string(port);
         return getaddrinfo(hostname, str_port, hints, ret);
     }
@@ -225,40 +159,33 @@ namespace pn {
         ::freeaddrinfo(ai);
     }
 
-    inline int getnameinfo(const struct sockaddr* sockaddr, socklen_t addrlen, std::string& hostname, std::string& port, int flags) {
+    inline Status getnameinfo(const struct sockaddr* sockaddr, socklen_t addrlen, std::string& hostname, std::string& port, int flags) {
         hostname.resize(NI_MAXHOST);
         port.resize(NI_MAXSERV);
         if (int result = ::getnameinfo(sockaddr, addrlen, &hostname[0], NI_MAXHOST, &port[0], NI_MAXSERV, flags); result != PN_OK) {
-            detail::set_last_gai_error(result);
-            detail::set_last_error(PN_EAI);
-            return PN_ERROR;
+            return std::unexpected(make_address_info_error(result, "resolve address"));
         }
         hostname.resize(strlen(hostname.data()));
         port.resize(strlen(port.data()));
-        return PN_OK;
+        return {};
     }
 
-    inline int inet_pton(int af, StringView src, void* ret) {
-        if (int result = ::inet_pton(af, src.c_str(), ret); !result) {
-            detail::set_last_error(PN_EPTON);
-            return PN_ERROR;
+    inline Status inet_pton(int af, StringView src, void* ret) {
+        if (int result = ::inet_pton(af, src.c_str(), ret); result == 0) {
+            return std::unexpected(make_invalid_address_error("parse address"));
         } else if (result == -1) {
-            detail::set_last_socket_error(detail::get_last_system_error());
-            detail::set_last_error(PN_ESOCKET);
-            return PN_ERROR;
+            return std::unexpected(make_last_socket_error("parse address"));
         }
-        return PN_OK;
+        return {};
     }
 
-    inline int inet_ntop(int af, const void* src, std::string& ret) {
+    inline Status inet_ntop(int af, const void* src, std::string& ret) {
         ret.resize(INET6_ADDRSTRLEN);
         if (::inet_ntop(af, src, &ret[0], INET6_ADDRSTRLEN) == nullptr) {
-            detail::set_last_socket_error(detail::get_last_system_error());
-            detail::set_last_error(PN_ESOCKET);
-            return PN_ERROR;
+            return std::unexpected(make_last_socket_error("format address"));
         }
         ret.resize(strlen(ret.c_str()));
-        return PN_OK;
+        return {};
     }
 
     class Socket {
@@ -281,7 +208,7 @@ namespace pn {
 
         Socket& operator=(Socket&& socket) noexcept {
             if (this != &socket) {
-                close();
+                (void) close();
                 fd = std::exchange(socket.fd, PN_INVALID_SOCKFD);
                 addr = socket.addr;
                 addrlen = socket.addrlen;
@@ -290,59 +217,49 @@ namespace pn {
         }
 
         virtual ~Socket() {
-            close();
+            (void) close();
         }
 
         // Don't use this if you are using bind or connect on pn::Server or pn::Client, respectively
-        int init(int domain, int type, int protocol) {
+        Status init(int domain, int type, int protocol) {
             if ((fd = socket(domain, type, protocol)) == PN_INVALID_SOCKFD) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-                return PN_ERROR;
+                return std::unexpected(make_last_socket_error("create socket"));
             }
-            return PN_OK;
+            return {};
         }
 
-        int setsockopt(int level, int optname, const void* optval, socklen_t optlen) {
+        Status setsockopt(int level, int optname, const void* optval, socklen_t optlen) {
             if (::setsockopt(fd, level, optname, (const char*) optval, optlen) == PN_ERROR) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-                return PN_ERROR;
+                return std::unexpected(make_last_socket_error("set socket option"));
             }
-            return PN_OK;
+            return {};
         }
 
-        int getsockopt(int level, int optname, void* optval, socklen_t* optlen) const {
+        Status getsockopt(int level, int optname, void* optval, socklen_t* optlen) const {
             if (::getsockopt(fd, level, optname, (char*) optval, optlen) == PN_ERROR) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-                return PN_ERROR;
+                return std::unexpected(make_last_socket_error("get socket option"));
             }
-            return PN_OK;
+            return {};
         }
 
-        int shutdown(int how) {
+        Status shutdown(int how) {
             if (::shutdown(fd, how) == PN_ERROR) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-                return PN_ERROR;
+                return std::unexpected(make_last_socket_error("shut down socket"));
             }
-            return PN_OK;
+            return {};
         }
 
         // By default, the closed socket file descriptor is LOST if this function executes successfully
-        virtual int close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) {
+        virtual Status close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) {
             if (!is_valid()) {
-                return PN_OK;
+                return {};
             }
 
             if ((protocol_layers & PN_PROTOCOL_LAYER_SYSTEM) && detail::closesocket(fd) == PN_ERROR) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-                return PN_ERROR;
+                return std::unexpected(make_last_socket_error("close socket"));
             }
             fd = PN_INVALID_SOCKFD;
-            return PN_OK;
+            return {};
         }
 
         bool is_valid() const {
@@ -373,9 +290,9 @@ namespace pn {
         BasicServer(Args&&... args):
             Base(std::forward<Args>(args)...) {}
 
-        int bind(StringView hostname, StringView port) {
+        Status bind(StringView hostname, StringView port) {
             struct addrinfo* ai_list;
-            struct addrinfo hints = {0};
+            struct addrinfo hints = {};
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
             hints.ai_protocol = Protocol;
@@ -383,21 +300,21 @@ namespace pn {
             hints.ai_flags = AI_IDN;
 #endif
 
-            if (getaddrinfo(hostname, port, &hints, &ai_list) == PN_ERROR) {
-                return PN_ERROR;
+            if (Status result = getaddrinfo(hostname, port, &hints, &ai_list); !result) {
+                return result;
             }
 
             struct addrinfo* ai_it;
             for (ai_it = ai_list; ai_it != nullptr; ai_it = ai_it->ai_next) {
-                if (this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol) == PN_ERROR) {
+                if (!this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) {
                     continue;
                 }
 
                 {
                     static constexpr int value = 1;
-                    if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)) == PN_ERROR) {
+                    if (Status result = Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)); !result) {
                         pn::freeaddrinfo(ai_list);
-                        return PN_ERROR;
+                        return result;
                     }
                 }
 
@@ -405,50 +322,47 @@ namespace pn {
                     break;
                 }
 
-                if (Base::close() == PN_ERROR) {
+                if (Status result = Base::close(); !result) {
                     pn::freeaddrinfo(ai_list);
-                    return PN_ERROR;
+                    return result;
                 }
             }
             if (ai_it == nullptr) {
-                detail::set_last_error(PN_EBADADDRS);
                 pn::freeaddrinfo(ai_list);
-                return PN_ERROR;
+                return std::unexpected(make_invalid_address_error("bind"));
             }
 
             this->addr = *ai_it->ai_addr;
             this->addrlen = ai_it->ai_addrlen;
 
             pn::freeaddrinfo(ai_list);
-            return PN_OK;
+            return {};
         }
 
-        int bind(StringView hostname, unsigned short port) {
+        Status bind(StringView hostname, unsigned short port) {
             return bind(hostname, std::to_string(port));
         }
 
-        int bind(const struct sockaddr* addr, socklen_t addrlen) {
-            if (this->init(addr->sa_family, Socktype, Protocol) == PN_ERROR) {
-                return PN_ERROR;
+        Status bind(const struct sockaddr* addr, socklen_t addrlen) {
+            if (Status result = this->init(addr->sa_family, Socktype, Protocol); !result) {
+                return result;
             }
 
             {
                 static constexpr int value = 1;
-                if (Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)) == PN_ERROR) {
-                    return PN_ERROR;
+                if (Status result = Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)); !result) {
+                    return result;
                 }
             }
 
             if (::bind(this->fd, addr, addrlen) == PN_ERROR) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-                return PN_ERROR;
+                return std::unexpected(make_last_socket_error("bind"));
             }
 
             this->addr = *addr;
             this->addrlen = addrlen;
 
-            return PN_OK;
+            return {};
         }
     };
 
@@ -459,9 +373,9 @@ namespace pn {
         BasicClient(Args&&... args):
             Base(std::forward<Args>(args)...) {}
 
-        int connect(StringView hostname, StringView port, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
+        Status connect(StringView hostname, StringView port, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
             struct addrinfo* ai_list;
-            struct addrinfo hints = {0};
+            struct addrinfo hints = {};
             hints.ai_family = AF_UNSPEC;
             hints.ai_socktype = Socktype;
             hints.ai_protocol = Protocol;
@@ -469,68 +383,63 @@ namespace pn {
             hints.ai_flags = AI_IDN;
 #endif
 
-            if (getaddrinfo(hostname, port, &hints, &ai_list) == PN_ERROR) {
-                return PN_ERROR;
+            if (Status result = getaddrinfo(hostname, port, &hints, &ai_list); !result) {
+                return result;
             }
 
             struct addrinfo* ai_it;
             for (ai_it = ai_list; ai_it != nullptr; ai_it = ai_it->ai_next) {
-                if (this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol) == PN_ERROR) {
+                if (!this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) {
                     continue;
                 }
 
                 if (config_cb && !config_cb(*this)) {
-                    detail::set_last_error(PN_EUSERCB);
                     pn::freeaddrinfo(ai_list);
-                    return PN_ERROR;
+                    return std::unexpected(make_user_callback_error("configure client"));
                 }
 
                 if (::connect(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) {
                     break;
                 }
 
-                if (Base::close() == PN_ERROR) {
+                if (Status result = Base::close(); !result) {
                     pn::freeaddrinfo(ai_list);
-                    return PN_ERROR;
+                    return result;
                 }
             }
             if (ai_it == nullptr) {
-                detail::set_last_error(PN_EBADADDRS);
                 pn::freeaddrinfo(ai_list);
-                return PN_ERROR;
+                return std::unexpected(make_invalid_address_error("connect"));
             }
 
             this->addr = *ai_it->ai_addr;
             this->addrlen = ai_it->ai_addrlen;
 
             pn::freeaddrinfo(ai_list);
-            return PN_OK;
+            return {};
         }
 
-        int connect(StringView hostname, unsigned short port, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
+        Status connect(StringView hostname, unsigned short port, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
             return connect(hostname, std::to_string(port), config_cb);
         }
 
-        int connect(const struct sockaddr* addr, socklen_t addrlen, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
-            if (this->init(addr->sa_family, Socktype, Protocol) == PN_ERROR) {
-                return PN_ERROR;
+        Status connect(const struct sockaddr* addr, socklen_t addrlen, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
+            if (Status result = this->init(addr->sa_family, Socktype, Protocol); !result) {
+                return result;
             }
 
             if (config_cb && !config_cb(*this)) {
-                detail::set_last_error(PN_EUSERCB);
-                return PN_ERROR;
+                return std::unexpected(make_user_callback_error("configure client"));
             }
 
             if (::connect(this->fd, addr, addrlen) == PN_ERROR) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-                return PN_ERROR;
+                return std::unexpected(make_last_socket_error("connect"));
             }
 
             this->addr = *addr;
             this->addrlen = addrlen;
 
-            return PN_OK;
+            return {};
         }
     };
 
@@ -543,59 +452,62 @@ namespace pn {
             Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 Socket(fd, addr, addrlen) {}
 
-            virtual ssize_t send(const void* buf, size_t len) {
+            virtual Result<size_t> send(const void* buf, size_t len) {
                 for (;;) {
                     ssize_t result;
                     if ((result = ::send(fd, (const char*) buf, len, 0)) == PN_ERROR) {
 #ifndef _WIN32
-                        if (detail::get_last_system_error() == EINTR) {
+                        std::error_code error = last_socket_error_code();
+                        if (error.value() == EINTR) {
                             continue;
                         }
+                        return std::unexpected(Error {error, "send"});
+#else
+                        return std::unexpected(make_last_socket_error("send"));
 #endif
-
-                        detail::set_last_socket_error(detail::get_last_system_error());
-                        detail::set_last_error(PN_ESOCKET);
                     }
                     return result;
                 }
             }
 
-            virtual ssize_t recv(void* buf, size_t len) {
+            virtual Result<size_t> recv(void* buf, size_t len) {
                 for (;;) {
                     ssize_t result;
                     if ((result = ::recv(fd, (char*) buf, len, 0)) == PN_ERROR) {
 #ifndef _WIN32
-                        if (detail::get_last_system_error() == EINTR) {
+                        std::error_code error = last_socket_error_code();
+                        if (error.value() == EINTR) {
                             continue;
                         }
+                        return std::unexpected(Error {error, "receive"});
+#else
+                        return std::unexpected(make_last_socket_error("receive"));
 #endif
-
-                        detail::set_last_socket_error(detail::get_last_system_error());
-                        detail::set_last_error(PN_ESOCKET);
                     }
                     return result;
                 }
             }
 
-            virtual ssize_t peek(void* buf, size_t len) {
+            virtual Result<size_t> peek(void* buf, size_t len) {
                 for (;;) {
                     ssize_t result;
                     if ((result = ::recv(fd, (char*) buf, len, MSG_PEEK)) == PN_ERROR) {
 #ifndef _WIN32
-                        if (detail::get_last_system_error() == EINTR) {
+                        std::error_code error = last_socket_error_code();
+                        if (error.value() == EINTR) {
                             continue;
                         }
+                        return std::unexpected(Error {error, "peek"});
+#else
+                        return std::unexpected(make_last_socket_error("peek"));
 #endif
-
-                        detail::set_last_socket_error(detail::get_last_system_error());
-                        detail::set_last_error(PN_ESOCKET);
                     }
                     return result;
                 }
             }
 
-            ssize_t sendall(const void* buf, size_t len);
-            ssize_t recvall(void* buf, size_t len);
+            Result<size_t> sendall(const void* buf, size_t len);
+            Result<size_t> recvall(void* buf, size_t len);
         };
 
         class BufReceiver {
@@ -630,9 +542,9 @@ namespace pn {
                 return data.size() - cursor;
             }
 
-            ssize_t recv(Connection& conn, void* buf, size_t len);
-            ssize_t peek(Connection& conn, void* buf, size_t len);
-            ssize_t recvall(Connection& conn, void* buf, size_t len);
+            Result<size_t> recv(Connection& conn, void* buf, size_t len);
+            Result<size_t> peek(Connection& conn, void* buf, size_t len);
+            Result<size_t> recvall(Connection& conn, void* buf, size_t len);
             void rewind(const void* buf, size_t len);
         };
 
@@ -647,7 +559,7 @@ namespace pn {
                 BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
 
             // Return false from the callback to stop listening
-            int listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
+            Status listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
         };
 
         using Client = BasicClient<Connection, SOCK_STREAM, IPPROTO_TCP>;
@@ -662,35 +574,37 @@ namespace pn {
             Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
                 pn::Socket(fd, addr, addrlen) {}
 
-            virtual ssize_t sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
+            virtual Result<size_t> sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
                 for (;;) {
                     ssize_t result;
                     if ((result = ::sendto(fd, (const char*) buf, len, flags, dest_addr, addrlen)) == PN_ERROR) {
 #ifndef _WIN32
-                        if (detail::get_last_system_error() == EINTR) {
+                        std::error_code error = last_socket_error_code();
+                        if (error.value() == EINTR) {
                             continue;
                         }
+                        return std::unexpected(Error {error, "send datagram"});
+#else
+                        return std::unexpected(make_last_socket_error("send datagram"));
 #endif
-
-                        detail::set_last_socket_error(detail::get_last_system_error());
-                        detail::set_last_error(PN_ESOCKET);
                     }
                     return result;
                 }
             }
 
-            virtual ssize_t recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
+            virtual Result<size_t> recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags = 0) {
                 for (;;) {
                     ssize_t result;
                     if ((result = ::recvfrom(fd, (char*) buf, len, flags, src_addr, addrlen)) == PN_ERROR) {
 #ifndef _WIN32
-                        if (detail::get_last_system_error() == EINTR) {
+                        std::error_code error = last_socket_error_code();
+                        if (error.value() == EINTR) {
                             continue;
                         }
+                        return std::unexpected(Error {error, "receive datagram"});
+#else
+                        return std::unexpected(make_last_socket_error("receive datagram"));
 #endif
-
-                        detail::set_last_socket_error(detail::get_last_system_error());
-                        detail::set_last_error(PN_ESOCKET);
                     }
                     return result;
                 }
