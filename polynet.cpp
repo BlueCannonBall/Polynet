@@ -1,145 +1,62 @@
 #include "polynet.hpp"
-#include "secure_sockets.hpp"
 #include <algorithm>
 #include <string.h>
-#ifndef _GNU_SOURCE
-    #include <assert.h>
-#endif
 
 namespace pn {
-    namespace detail {
-        thread_local int last_error = PN_ESUCCESS;
-        thread_local int last_gai_error = PN_ESUCCESS;
-        thread_local int last_socket_error = PN_ESUCCESS;
-    } // namespace detail
-
 #ifdef _WIN32
     WSADATA wsa_data;
 #endif
 
-    int quit() {
+    Status quit() {
 #ifdef _WIN32
         if (WSACleanup() == PN_ERROR) {
-            detail::set_last_socket_error(detail::get_last_system_error());
-            detail::set_last_error(PN_ESOCKET);
-            return PN_ERROR;
+            return std::unexpected(make_last_socket_error("clean up Winsock"));
         }
-        return PN_OK;
+        return {};
 #else
         if (signal(SIGPIPE, SIG_DFL) == SIG_ERR) {
-            detail::set_last_socket_error(detail::get_last_system_error());
-            detail::set_last_error(PN_ESOCKET);
-            return PN_ERROR;
+            return std::unexpected(make_last_socket_error("restore SIGPIPE"));
         }
-        return PN_OK;
+        return {};
 #endif
-    }
-
-    std::string strerror(int error) {
-        const static std::string error_strings[] = {
-            "Success",                                       // PN_ESUCCESS
-            "Socket error",                                  // PN_ESOCKET
-            "getaddrinfo failed",                            // PN_EAI
-            "All addresses returned by getaddrinfo are bad", // PN_EBADADDRS
-            "inet_pton failed",                              // PN_EPTON
-            "SSL error",                                     // PN_ESSL
-            "User callback failed",                          // PN_EUSERCB
-        };
-
-        if (error >= 0 && error <= 6) {
-            return error_strings[error];
-        }
-        return "Unknown error";
-    }
-
-    std::string socket_strerror(int error) {
-        char buf[1024];
-#ifdef _WIN32
-        DWORD result = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-            nullptr,
-            error,
-            0,
-            buf,
-            1024,
-            nullptr);
-        assert(result);
-
-        for (DWORD i = 0; i < result - 1; ++i) {
-            if (buf[i] == '\n') {
-                buf[i] = ' ';
-            }
-        }
-        if (buf[result - 1] == '\n') {
-            buf[--result] = '\0';
-        }
-
-        return std::string(buf, buf + result);
-#elif defined(_GNU_SOURCE)
-        return strerror_r(error, buf, 1024);
-#else
-        assert(strerror_r(error, buf, 1024) == PN_OK);
-        return buf;
-#endif
-    }
-
-    std::string universal_strerror() {
-        std::string base_error = strerror(get_last_error());
-        std::string specific_error;
-
-        switch (get_last_error()) {
-        case PN_ESOCKET:
-            specific_error = socket_strerror();
-            break;
-
-        case PN_EAI:
-            specific_error = gai_strerror();
-            break;
-
-        case PN_ESSL:
-            specific_error = ssl_strerror();
-            break;
-
-        default:
-            return base_error;
-        }
-
-        return base_error + ": " + specific_error;
     }
 
     namespace tcp {
-        ssize_t Connection::sendall(const void* buf, size_t len) {
+        Result<size_t> Connection::sendall(const void* buf, size_t len) {
             size_t sent = 0;
             while (sent < len) {
-                if (ssize_t result = send((const char*) buf + sent, len - sent); result == PN_ERROR) {
+                Result<size_t> result = send((const char*) buf + sent, len - sent);
+                if (!result) {
                     if (sent) {
                         break;
                     }
-                    return PN_ERROR;
+                    return std::unexpected(result.error());
                 } else {
-                    sent += result;
+                    sent += *result;
                 }
             }
             return sent;
         }
 
-        ssize_t Connection::recvall(void* buf, size_t len) {
+        Result<size_t> Connection::recvall(void* buf, size_t len) {
             size_t received = 0;
             while (received < len) {
-                if (ssize_t result = recv((char*) buf + received, len - received); result == PN_ERROR) {
+                Result<size_t> result = recv((char*) buf + received, len - received);
+                if (!result) {
                     if (received) {
                         break;
                     }
-                    return PN_ERROR;
-                } else if (!result) {
+                    return std::unexpected(result.error());
+                } else if (!*result) {
                     break;
                 } else {
-                    received += result;
+                    received += *result;
                 }
             }
             return received;
         }
 
-        ssize_t BufReceiver::recv(Connection& conn, void* buf, size_t len) {
+        Result<size_t> BufReceiver::recv(Connection& conn, void* buf, size_t len) {
             if (available()) {
                 size_t received = std::min(len, available());
                 memcpy(buf, data.data() + cursor, received);
@@ -156,19 +73,19 @@ namespace pn {
                 return conn.recv(buf, len);
             }
 
-            ssize_t result;
             data.resize(capacity);
-            if ((result = conn.recv(data.data(), capacity)) == PN_ERROR) {
+            Result<size_t> result = conn.recv(data.data(), capacity);
+            if (!result) {
                 clear();
-                return PN_ERROR;
-            } else if (!result) {
+                return std::unexpected(result.error());
+            } else if (!*result) {
                 clear();
                 return 0;
             }
-            data.resize(result);
+            data.resize(*result);
             cursor = 0;
 
-            size_t received = std::min<size_t>(len, result);
+            size_t received = std::min<size_t>(len, *result);
             memcpy(buf, data.data(), received);
             cursor += received;
 
@@ -179,7 +96,7 @@ namespace pn {
             return received;
         }
 
-        ssize_t BufReceiver::peek(Connection& conn, void* buf, size_t len) {
+        Result<size_t> BufReceiver::peek(Connection& conn, void* buf, size_t len) {
             if (available()) {
                 size_t to_copy = std::min(len, available());
                 memcpy(buf, data.data() + cursor, to_copy);
@@ -190,35 +107,36 @@ namespace pn {
                 return conn.peek(buf, len);
             }
 
-            ssize_t result;
             data.resize(capacity);
-            if ((result = conn.recv(data.data(), capacity)) == PN_ERROR) {
+            Result<size_t> result = conn.recv(data.data(), capacity);
+            if (!result) {
                 clear();
-                return PN_ERROR;
-            } else if (!result) {
+                return std::unexpected(result.error());
+            } else if (!*result) {
                 clear();
                 return 0;
             }
-            data.resize(result);
+            data.resize(*result);
             cursor = 0;
 
-            size_t received = std::min<size_t>(len, result);
+            size_t received = std::min<size_t>(len, *result);
             memcpy(buf, data.data(), received);
             return received;
         }
 
-        ssize_t BufReceiver::recvall(Connection& conn, void* buf, size_t len) {
+        Result<size_t> BufReceiver::recvall(Connection& conn, void* buf, size_t len) {
             size_t received = 0;
             while (received < len) {
-                if (ssize_t result = recv(conn, (char*) buf + received, len - received); result == PN_ERROR) {
+                Result<size_t> result = recv(conn, (char*) buf + received, len - received);
+                if (!result) {
                     if (received) {
                         break;
                     }
-                    return PN_ERROR;
-                } else if (!result) {
+                    return std::unexpected(result.error());
+                } else if (!*result) {
                     break;
                 } else {
-                    received += result;
+                    received += *result;
                 }
             }
             return received;
@@ -241,29 +159,24 @@ namespace pn {
             }
         }
 
-        int Server::listen(const std::function<bool(connection_type)>& cb, int backlog) {
+        Status Server::listen(const std::function<bool(connection_type)>& cb, int backlog) {
             if (::listen(fd, backlog) == PN_ERROR) {
-                detail::set_last_socket_error(detail::get_last_system_error());
-                detail::set_last_error(PN_ESOCKET);
-                return PN_ERROR;
+                return std::unexpected(make_last_socket_error("listen"));
             }
 
             for (;;) {
                 connection_type conn;
                 if ((conn.fd = accept(fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
+                    std::error_code error = last_socket_error_code();
 #ifdef _WIN32
-                    if (detail::get_last_system_error() != WSAECONNRESET) {
-                        detail::set_last_socket_error(detail::get_last_system_error());
-                        detail::set_last_error(PN_ESOCKET);
-                        return PN_ERROR;
+                    if (error.value() != WSAECONNRESET) {
+                        return std::unexpected(Error {error, "accept"});
                     }
                     continue;
 #else
-                    switch (detail::get_last_system_error()) {
+                    switch (error.value()) {
                     default:
-                        detail::set_last_socket_error(detail::get_last_system_error());
-                        detail::set_last_error(PN_ESOCKET);
-                        return PN_ERROR;
+                        return std::unexpected(Error {error, "accept"});
 
                     case EINTR:
                     case EPERM:
@@ -279,7 +192,7 @@ namespace pn {
                 }
             }
 
-            return PN_OK;
+            return {};
         }
     } // namespace tcp
 } // namespace pn

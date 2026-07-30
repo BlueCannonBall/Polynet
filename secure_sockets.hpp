@@ -9,30 +9,10 @@
 #define PN_PROTOCOL_LAYER_SSL (1 << 1)
 
 namespace pn {
-    namespace detail {
-        extern thread_local unsigned long last_ssl_error;
-
-        inline void set_last_ssl_error(unsigned long error) {
-            last_ssl_error = error;
-        }
-
-        inline unsigned long get_last_ssl_error() {
-            return ERR_get_error();
-        }
-    } // namespace detail
-
-    inline unsigned long get_last_ssl_error() {
-        return detail::last_ssl_error;
-    }
-
-    inline std::string ssl_strerror(unsigned long error = get_last_ssl_error()) {
-        return ERR_error_string(error, nullptr);
-    }
-
     namespace tcp {
         class SecureConnection : public Connection {
         protected:
-            void handle_io_error(int error);
+            Error io_error(int error, StringView operation);
 
         public:
             SSL* ssl = nullptr;
@@ -49,7 +29,7 @@ namespace pn {
             }
 
             ~SecureConnection() {
-                close();
+                (void) close();
             }
 
             SecureConnection& operator=(SecureConnection&& conn) noexcept {
@@ -60,30 +40,25 @@ namespace pn {
                 return *this;
             }
 
-            int ssl_init(SSL_CTX* ssl_ctx) {
+            Status ssl_init(SSL_CTX* ssl_ctx) {
                 if (!(ssl = SSL_new(ssl_ctx))) {
-                    detail::set_last_ssl_error(detail::get_last_ssl_error());
-                    detail::set_last_error(PN_ESSL);
-                    return PN_ERROR;
+                    return std::unexpected(make_ssl_error(ERR_get_error(), "create SSL connection"));
                 }
                 if (!SSL_set_fd(ssl, fd)) {
-                    detail::set_last_ssl_error(detail::get_last_ssl_error());
-                    detail::set_last_error(PN_ESSL);
-                    return PN_ERROR;
+                    return std::unexpected(make_ssl_error(ERR_get_error(), "set SSL socket"));
                 }
-                return PN_OK;
+                return {};
             }
 
-            int ssl_accept() {
+            Status ssl_accept() {
                 ERR_clear_error();
                 if (int result = SSL_accept(ssl); result <= 0) {
-                    handle_io_error(result);
-                    return PN_ERROR;
+                    return std::unexpected(io_error(result, "accept SSL connection"));
                 }
-                return PN_OK;
+                return {};
             }
 
-            int close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
+            Status close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl) {
                     if (protocol_layers & PN_PROTOCOL_LAYER_SSL) SSL_shutdown(ssl);
                     SSL_free(ssl);
@@ -96,12 +71,11 @@ namespace pn {
                 return ssl;
             }
 
-            ssize_t send(const void* buf, size_t len) override {
+            Result<size_t> send(const void* buf, size_t len) override {
                 if (ssl) {
                     ERR_clear_error();
                     if (int result = SSL_write(ssl, buf, len); result <= 0) {
-                        handle_io_error(result);
-                        return PN_ERROR;
+                        return std::unexpected(io_error(result, "send SSL data"));
                     } else {
                         return result;
                     }
@@ -109,12 +83,11 @@ namespace pn {
                 return Connection::send(buf, len);
             }
 
-            ssize_t recv(void* buf, size_t len) override {
+            Result<size_t> recv(void* buf, size_t len) override {
                 if (ssl) {
                     ERR_clear_error();
                     if (int result = SSL_read(ssl, buf, len); result < 0) {
-                        handle_io_error(result);
-                        return PN_ERROR;
+                        return std::unexpected(io_error(result, "receive SSL data"));
                     } else {
                         return result;
                     }
@@ -122,12 +95,11 @@ namespace pn {
                 return Connection::recv(buf, len);
             }
 
-            ssize_t peek(void* buf, size_t len) override {
+            Result<size_t> peek(void* buf, size_t len) override {
                 if (ssl) {
                     ERR_clear_error();
                     if (int result = SSL_peek(ssl, buf, len); result < 0) {
-                        handle_io_error(result);
-                        return PN_ERROR;
+                        return std::unexpected(io_error(result, "peek SSL data"));
                     } else {
                         return result;
                     }
@@ -154,7 +126,7 @@ namespace pn {
             }
 
             ~SecureServer() {
-                close();
+                (void) close();
             }
 
             SecureServer& operator=(SecureServer&& server) noexcept {
@@ -165,9 +137,9 @@ namespace pn {
                 return *this;
             }
 
-            int ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type);
+            Status ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type);
 
-            int close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
+            Status close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl_ctx) {
                     SSL_CTX_free(ssl_ctx);
                     ssl_ctx = nullptr;
@@ -179,7 +151,7 @@ namespace pn {
                 return ssl_ctx;
             }
 
-            int listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
+            Status listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
         };
 
         class SecureClient : public BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP> {
@@ -202,7 +174,7 @@ namespace pn {
             }
 
             ~SecureClient() {
-                close();
+                (void) close();
             }
 
             SecureClient& operator=(SecureClient&& client) noexcept {
@@ -213,18 +185,17 @@ namespace pn {
                 return *this;
             }
 
-            int ssl_init(StringView hostname, int verify_mode = SSL_VERIFY_PEER, StringView ca_file = {}, StringView ca_path = {});
+            Status ssl_init(StringView hostname, int verify_mode = SSL_VERIFY_PEER, StringView ca_file = {}, StringView ca_path = {});
 
-            int ssl_connect() {
+            Status ssl_connect() {
                 ERR_clear_error();
                 if (int result = SSL_connect(ssl); result <= 0) {
-                    handle_io_error(result);
-                    return PN_ERROR;
+                    return std::unexpected(io_error(result, "connect SSL connection"));
                 }
-                return PN_OK;
+                return {};
             }
 
-            int close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
+            Status close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
                 if (ssl) {
                     if (protocol_layers & PN_PROTOCOL_LAYER_SSL) SSL_shutdown(ssl);
                     SSL_free(ssl);
