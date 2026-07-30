@@ -11,6 +11,10 @@
     #include <ws2tcpip.h>
 #endif
 
+#ifdef Status
+    #undef Status
+#endif
+
 namespace pn {
     enum ErrorType {
         PN_ERROR_NONE,
