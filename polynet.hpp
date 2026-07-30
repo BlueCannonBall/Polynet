@@ -304,9 +304,11 @@ namespace pn {
                 return result;
             }
 
+            std::error_code last_error;
             struct addrinfo* ai_it;
             for (ai_it = ai_list; ai_it != nullptr; ai_it = ai_it->ai_next) {
-                if (!this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) {
+                if (Status result = this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol); !result) {
+                    last_error = result.error().code;
                     continue;
                 }
 
@@ -321,6 +323,7 @@ namespace pn {
                 if (::bind(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) {
                     break;
                 }
+                last_error = last_socket_error_code();
 
                 if (Status result = Base::close(); !result) {
                     pn::freeaddrinfo(ai_list);
@@ -329,6 +332,9 @@ namespace pn {
             }
             if (ai_it == nullptr) {
                 pn::freeaddrinfo(ai_list);
+                if (last_error) {
+                    return std::unexpected(Error {last_error, "bind"});
+                }
                 return std::unexpected(make_invalid_address_error("bind"));
             }
 
@@ -387,9 +393,11 @@ namespace pn {
                 return result;
             }
 
+            std::error_code last_error;
             struct addrinfo* ai_it;
             for (ai_it = ai_list; ai_it != nullptr; ai_it = ai_it->ai_next) {
-                if (!this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol)) {
+                if (Status result = this->init(ai_it->ai_family, ai_it->ai_socktype, ai_it->ai_protocol); !result) {
+                    last_error = result.error().code;
                     continue;
                 }
 
@@ -401,6 +409,7 @@ namespace pn {
                 if (::connect(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) {
                     break;
                 }
+                last_error = last_socket_error_code();
 
                 if (Status result = Base::close(); !result) {
                     pn::freeaddrinfo(ai_list);
@@ -409,6 +418,9 @@ namespace pn {
             }
             if (ai_it == nullptr) {
                 pn::freeaddrinfo(ai_list);
+                if (last_error) {
+                    return std::unexpected(Error {last_error, "connect"});
+                }
                 return std::unexpected(make_invalid_address_error("connect"));
             }
 
