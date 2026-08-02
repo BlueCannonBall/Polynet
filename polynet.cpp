@@ -25,8 +25,7 @@ namespace pn {
         Result<size_t> Connection::sendall(const void* buf, size_t len) {
             size_t sent = 0;
             while (sent < len) {
-                Result<size_t> result = send((const char*) buf + sent, len - sent);
-                if (!result) {
+                if (Result<size_t> result = send((const char*) buf + sent, len - sent); !result) {
                     if (sent) {
                         break;
                     }
@@ -41,8 +40,7 @@ namespace pn {
         Result<size_t> Connection::recvall(void* buf, size_t len) {
             size_t received = 0;
             while (received < len) {
-                Result<size_t> result = recv((char*) buf + received, len - received);
-                if (!result) {
+                if (Result<size_t> result = recv((char*) buf + received, len - received); !result) {
                     if (received) {
                         break;
                     }
@@ -74,26 +72,26 @@ namespace pn {
             }
 
             data.resize(capacity);
-            Result<size_t> result = conn.recv(data.data(), capacity);
-            if (!result) {
+            if (Result<size_t> result = conn.recv(data.data(), capacity); !result) {
                 clear();
                 return std::unexpected(result.error());
             } else if (!*result) {
                 clear();
                 return 0;
+            } else {
+                data.resize(*result);
+                cursor = 0;
+
+                size_t received = std::min<size_t>(len, *result);
+                memcpy(buf, data.data(), received);
+                cursor += received;
+
+                if (!available()) {
+                    clear();
+                }
+
+                return received;
             }
-            data.resize(*result);
-            cursor = 0;
-
-            size_t received = std::min<size_t>(len, *result);
-            memcpy(buf, data.data(), received);
-            cursor += received;
-
-            if (!available()) {
-                clear();
-            }
-
-            return received;
         }
 
         Result<size_t> BufReceiver::peek(Connection& conn, void* buf, size_t len) {
@@ -108,27 +106,26 @@ namespace pn {
             }
 
             data.resize(capacity);
-            Result<size_t> result = conn.recv(data.data(), capacity);
-            if (!result) {
+            if (Result<size_t> result = conn.recv(data.data(), capacity); !result) {
                 clear();
                 return std::unexpected(result.error());
             } else if (!*result) {
                 clear();
                 return 0;
-            }
-            data.resize(*result);
-            cursor = 0;
+            } else {
+                data.resize(*result);
+                cursor = 0;
 
-            size_t received = std::min<size_t>(len, *result);
-            memcpy(buf, data.data(), received);
-            return received;
+                size_t received = std::min<size_t>(len, *result);
+                memcpy(buf, data.data(), received);
+                return received;
+            }
         }
 
         Result<size_t> BufReceiver::recvall(Connection& conn, void* buf, size_t len) {
             size_t received = 0;
             while (received < len) {
-                Result<size_t> result = recv(conn, (char*) buf + received, len - received);
-                if (!result) {
+                if (Result<size_t> result = recv(conn, (char*) buf + received, len - received); !result) {
                     if (received) {
                         break;
                     }
@@ -166,7 +163,7 @@ namespace pn {
 
             for (;;) {
                 connection_type conn;
-                if ((conn.fd = accept(fd, &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
+                if ((conn.fd = accept(fd, (struct sockaddr*) &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
                     std::error_code error = last_socket_error_code();
 #ifdef _WIN32
                     if (error.value() != WSAECONNRESET) {

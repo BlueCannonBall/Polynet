@@ -1,5 +1,4 @@
 #include "error.hpp"
-#include <openssl/err.h>
 #include <string>
 #ifndef _WIN32
     #include <netdb.h>
@@ -21,6 +20,7 @@ namespace pn {
                 case PN_ERROR_INVALID_ADDRESS: return "Invalid address";
                 case PN_ERROR_USER_CALLBACK: return "User callback failed";
                 case PN_ERROR_SSL: return "SSL error";
+                case PN_ERROR_ALREADY_INITIALIZED: return "Already initialized";
                 default: return "Unknown Polynet error " + std::to_string(error);
                 }
             }
@@ -112,18 +112,6 @@ namespace pn {
             }
         };
 
-        class SSLCategory : public std::error_category {
-        public:
-            const char* name() const noexcept override {
-                return "ssl";
-            }
-
-            std::string message(int error) const override {
-                char buf[256];
-                ERR_error_string_n((unsigned long) error, buf, sizeof buf);
-                return buf;
-            }
-        };
     } // namespace detail
 
     const std::error_category& polynet_category() {
@@ -138,11 +126,6 @@ namespace pn {
 
     const std::error_category& address_info_category() {
         static const detail::AddressInfoCategory category;
-        return category;
-    }
-
-    const std::error_category& ssl_category() {
-        static const detail::SSLCategory category;
         return category;
     }
 } // namespace pn

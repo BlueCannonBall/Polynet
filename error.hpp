@@ -21,12 +21,12 @@ namespace pn {
         PN_ERROR_INVALID_ADDRESS,
         PN_ERROR_USER_CALLBACK,
         PN_ERROR_SSL,
+        PN_ERROR_ALREADY_INITIALIZED,
     };
 
     const std::error_category& polynet_category();
     const std::error_category& winsock_category();
     const std::error_category& address_info_category();
-    const std::error_category& ssl_category();
 
     inline std::error_code polynet_error_code(ErrorType error) {
         return {error, polynet_category()};
@@ -53,12 +53,8 @@ namespace pn {
         return {error, address_info_category()};
     }
 
-    inline std::error_code ssl_error_code(unsigned long error) {
-        return {(int) error, ssl_category()};
-    }
-
     struct Error {
-        std::error_code code = polynet_error_code(PN_ERROR_NONE);
+        std::error_code code;
         StringView operation;
 
         constexpr operator bool() const {
@@ -75,6 +71,10 @@ namespace pn {
 
     using Status = Result<void>;
 
+    inline Error make_polynet_error(ErrorType error, StringView operation = {}) {
+        return {polynet_error_code(error), operation};
+    }
+
     inline Error make_socket_error(int error, StringView operation = {}) {
         return {socket_error_code(error), operation};
     }
@@ -87,17 +87,6 @@ namespace pn {
         return {address_info_error_code(error), operation};
     }
 
-    inline Error make_invalid_address_error(StringView operation = {}) {
-        return {polynet_error_code(PN_ERROR_INVALID_ADDRESS), operation};
-    }
-
-    inline Error make_user_callback_error(StringView operation = {}) {
-        return {polynet_error_code(PN_ERROR_USER_CALLBACK), operation};
-    }
-
-    inline Error make_ssl_error(unsigned long error, StringView operation = {}) {
-        return {error ? ssl_error_code(error) : polynet_error_code(PN_ERROR_SSL), operation};
-    }
 } // namespace pn
 
 #endif

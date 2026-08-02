@@ -2,6 +2,7 @@
 #define POLYNET_SECURE_SOCKETS_HPP_
 
 #include "polynet.hpp"
+#include <mutex>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
@@ -9,103 +10,88 @@
 #define PN_PROTOCOL_LAYER_SSL (1 << 1)
 
 namespace pn {
+    const std::error_category& ssl_category();
+
+    inline std::error_code ssl_error_code(unsigned long error) {
+        return {(int) error, ssl_category()};
+    }
+
+    inline std::error_code last_ssl_error_code() {
+        return ssl_error_code(ERR_get_error());
+    }
+
+    inline Error make_ssl_error(unsigned long error, StringView operation = {}) {
+        return error ? Error {ssl_error_code(error), operation} : make_polynet_error(PN_ERROR_SSL, operation);
+    }
+
+    inline Error make_last_ssl_error(StringView operation = {}) {
+        if (std::error_code error = last_ssl_error_code(); error) {
+            return {error, operation};
+        }
+        return make_polynet_error(PN_ERROR_SSL, operation);
+    }
+
     namespace tcp {
         class SecureConnection : public Connection {
         protected:
-            Error io_error(int error, StringView operation);
+            static constexpr size_t ciphertext_buf_capacity = 4'000;
+
+            std::mutex ssl_mutex;
+            std::mutex ssl_retry_mutex;
+            std::mutex ssl_write_mutex;
+            std::mutex ciphertext_send_mutex;
+            std::mutex ciphertext_recv_mutex;
+            SSL* ssl = nullptr;
+            BIO* ciphertext_send_bio = nullptr;
+            BIO* ciphertext_recv_bio = nullptr;
+            std::vector<char> pending_ciphertext;
+            size_t pending_ciphertext_cursor = 0;
+            bool ssl_fatal_error = false;
+
+            Status flush_ciphertext();
+            Result<bool> recv_ciphertext();
+            Status handshake(StringView operation);
+            Result<size_t> read_plaintext(void* plaintext, size_t len, bool peek, StringView operation);
 
         public:
-            SSL* ssl = nullptr;
-
             SecureConnection() = default;
-            SecureConnection(sockfd_t fd, SSL* ssl):
-                Connection(fd),
-                ssl(ssl) {}
-            SecureConnection(sockfd_t fd, SSL* ssl, const struct sockaddr& addr, socklen_t addrlen):
-                Connection(fd, addr, addrlen),
-                ssl(ssl) {}
+            SecureConnection(sockfd_t fd):
+                Connection(fd) {}
+            SecureConnection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
+                Connection(fd, addr, addrlen) {}
             SecureConnection(SecureConnection&& conn) noexcept {
                 *this = std::move(conn);
-            }
-
-            ~SecureConnection() {
-                (void) close();
             }
 
             SecureConnection& operator=(SecureConnection&& conn) noexcept {
                 if (this != &conn) {
                     Connection::operator=(std::move(conn));
                     ssl = std::exchange(conn.ssl, nullptr);
+                    ciphertext_recv_bio = std::exchange(conn.ciphertext_recv_bio, nullptr);
+                    ciphertext_send_bio = std::exchange(conn.ciphertext_send_bio, nullptr);
+                    pending_ciphertext = std::move(conn.pending_ciphertext);
+                    pending_ciphertext_cursor = std::exchange(conn.pending_ciphertext_cursor, 0);
+                    ssl_fatal_error = std::exchange(conn.ssl_fatal_error, false);
                 }
                 return *this;
             }
 
-            Status ssl_init(SSL_CTX* ssl_ctx) {
-                if (!(ssl = SSL_new(ssl_ctx))) {
-                    return std::unexpected(make_ssl_error(ERR_get_error(), "create SSL connection"));
-                }
-                if (!SSL_set_fd(ssl, fd)) {
-                    return std::unexpected(make_ssl_error(ERR_get_error(), "set SSL socket"));
-                }
-                return {};
+            ~SecureConnection() {
+                (void) close();
             }
 
-            Status ssl_accept() {
-                ERR_clear_error();
-                if (int result = SSL_accept(ssl); result <= 0) {
-                    return std::unexpected(io_error(result, "accept SSL connection"));
-                }
-                return {};
-            }
+            Status ssl_init(SSL_CTX* ssl_ctx);
+            Status ssl_accept();
 
-            Status close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
-                if (ssl) {
-                    if (protocol_layers & PN_PROTOCOL_LAYER_SSL) SSL_shutdown(ssl);
-                    SSL_free(ssl);
-                    ssl = nullptr;
-                }
-                return Connection::close(protocol_layers);
-            }
+            Status close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override;
 
             bool is_secure() const override {
                 return ssl;
             }
 
-            Result<size_t> send(const void* buf, size_t len) override {
-                if (ssl) {
-                    ERR_clear_error();
-                    if (int result = SSL_write(ssl, buf, len); result <= 0) {
-                        return std::unexpected(io_error(result, "send SSL data"));
-                    } else {
-                        return result;
-                    }
-                }
-                return Connection::send(buf, len);
-            }
-
-            Result<size_t> recv(void* buf, size_t len) override {
-                if (ssl) {
-                    ERR_clear_error();
-                    if (int result = SSL_read(ssl, buf, len); result < 0) {
-                        return std::unexpected(io_error(result, "receive SSL data"));
-                    } else {
-                        return result;
-                    }
-                }
-                return Connection::recv(buf, len);
-            }
-
-            Result<size_t> peek(void* buf, size_t len) override {
-                if (ssl) {
-                    ERR_clear_error();
-                    if (int result = SSL_peek(ssl, buf, len); result < 0) {
-                        return std::unexpected(io_error(result, "peek SSL data"));
-                    } else {
-                        return result;
-                    }
-                }
-                return Connection::peek(buf, len);
-            }
+            Result<size_t> send(const void* plaintext, size_t len) override;
+            Result<size_t> recv(void* plaintext, size_t len) override;
+            Result<size_t> peek(void* plaintext, size_t len) override;
         };
 
         class SecureServer : public Server {
@@ -125,16 +111,16 @@ namespace pn {
                 *this = std::move(server);
             }
 
-            ~SecureServer() {
-                (void) close();
-            }
-
             SecureServer& operator=(SecureServer&& server) noexcept {
                 if (this != &server) {
                     Server::operator=(std::move(server));
                     ssl_ctx = std::exchange(server.ssl_ctx, nullptr);
                 }
                 return *this;
+            }
+
+            ~SecureServer() {
+                (void) close();
             }
 
             Status ssl_init(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type);
@@ -163,18 +149,8 @@ namespace pn {
 
         public:
             SecureClient() = default;
-            SecureClient(sockfd_t fd, SSL_CTX* ssl_ctx, SSL* ssl):
-                BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, ssl),
-                ssl_ctx(ssl_ctx) {}
-            SecureClient(sockfd_t fd, SSL_CTX* ssl_ctx, SSL* ssl, const struct sockaddr& addr, socklen_t addrlen):
-                BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>(fd, ssl, addr, addrlen),
-                ssl_ctx(ssl_ctx) {}
             SecureClient(SecureClient&& client) noexcept {
                 *this = std::move(client);
-            }
-
-            ~SecureClient() {
-                (void) close();
             }
 
             SecureClient& operator=(SecureClient&& client) noexcept {
@@ -185,27 +161,17 @@ namespace pn {
                 return *this;
             }
 
-            Status ssl_init(StringView hostname, int verify_mode = SSL_VERIFY_PEER, StringView ca_file = {}, StringView ca_path = {});
-
-            Status ssl_connect() {
-                ERR_clear_error();
-                if (int result = SSL_connect(ssl); result <= 0) {
-                    return std::unexpected(io_error(result, "connect SSL connection"));
-                }
-                return {};
+            ~SecureClient() {
+                (void) close();
             }
 
+            Status ssl_init(StringView hostname, int verify_mode = SSL_VERIFY_PEER, StringView ca_file = {}, StringView ca_path = {});
+            Status ssl_connect();
+
             Status close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override {
-                if (ssl) {
-                    if (protocol_layers & PN_PROTOCOL_LAYER_SSL) SSL_shutdown(ssl);
-                    SSL_free(ssl);
-                    ssl = nullptr;
-                }
-                if (ssl_ctx) {
-                    SSL_CTX_free(ssl_ctx);
-                    ssl_ctx = nullptr;
-                }
-                return Connection::close(protocol_layers);
+                Status result = SecureConnection::close(protocol_layers);
+                SSL_CTX_free(std::exchange(ssl_ctx, nullptr));
+                return result;
             }
 
             bool is_secure() const override {

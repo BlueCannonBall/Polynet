@@ -172,7 +172,7 @@ namespace pn {
 
     inline Status inet_pton(int af, StringView src, void* ret) {
         if (int result = ::inet_pton(af, src.c_str(), ret); result == 0) {
-            return std::unexpected(make_invalid_address_error("parse address"));
+            return std::unexpected(make_polynet_error(PN_ERROR_INVALID_ADDRESS, "parse address"));
         } else if (result == -1) {
             return std::unexpected(make_last_socket_error("parse address"));
         }
@@ -191,17 +191,18 @@ namespace pn {
     class Socket {
     public:
         sockfd_t fd = PN_INVALID_SOCKFD;
-        struct sockaddr addr;            // The address corresponds to the address to which
-        socklen_t addrlen = sizeof addr; // the server is bound to for servers, or the address
-                                         // to which the client is connected to for clients
+        struct sockaddr_storage addr = {}; // The address corresponds to the address to which
+        socklen_t addrlen = sizeof addr;   // the server is bound to for servers, or the address
+                                           // to which the client is connected to for clients
 
         Socket() = default;
         Socket(sockfd_t fd):
             fd(fd) {}
         Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
             fd(fd),
-            addr(addr),
-            addrlen(addrlen) {}
+            addrlen(addrlen) {
+            memcpy(&this->addr, &addr, addrlen);
+        }
         Socket(Socket&& socket) noexcept {
             *this = std::move(socket);
         }
@@ -220,12 +221,19 @@ namespace pn {
             (void) close();
         }
 
-        // Don't use this if you are using bind or connect on pn::Server or pn::Client, respectively
+        // This socket must not already be initialized. Don't use this if you are using
+        // bind or connect on pn::Server or pn::Client, respectively
         Status init(int domain, int type, int protocol) {
-            if ((fd = socket(domain, type, protocol)) == PN_INVALID_SOCKFD) {
-                return std::unexpected(make_last_socket_error("create socket"));
+            if (is_valid()) {
+                return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "create socket"));
             }
-            return {};
+
+            if (sockfd_t fd = socket(domain, type, protocol); fd == PN_INVALID_SOCKFD) {
+                return std::unexpected(make_last_socket_error("create socket"));
+            } else {
+                this->fd = fd;
+                return {};
+            }
         }
 
         Status setsockopt(int level, int optname, const void* optval, socklen_t optlen) {
@@ -249,16 +257,15 @@ namespace pn {
             return {};
         }
 
-        // By default, the closed socket file descriptor is LOST if this function executes successfully
+        // By default, this function gives up ownership of the socket file descriptor
         virtual Status close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) {
             if (!is_valid()) {
                 return {};
             }
 
-            if ((protocol_layers & PN_PROTOCOL_LAYER_SYSTEM) && detail::closesocket(fd) == PN_ERROR) {
+            if ((protocol_layers & PN_PROTOCOL_LAYER_SYSTEM) && detail::closesocket(std::exchange(this->fd, PN_INVALID_SOCKFD)) == PN_ERROR) {
                 return std::unexpected(make_last_socket_error("close socket"));
             }
-            fd = PN_INVALID_SOCKFD;
             return {};
         }
 
@@ -291,6 +298,10 @@ namespace pn {
             Base(std::forward<Args>(args)...) {}
 
         Status bind(StringView hostname, StringView port) {
+            if (this->is_valid()) {
+                return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "bind"));
+            }
+
             struct addrinfo* ai_list;
             struct addrinfo hints = {};
             hints.ai_family = AF_UNSPEC;
@@ -299,7 +310,6 @@ namespace pn {
 #ifdef AI_IDN
             hints.ai_flags = AI_IDN;
 #endif
-
             if (Status result = getaddrinfo(hostname, port, &hints, &ai_list); !result) {
                 return result;
             }
@@ -314,7 +324,8 @@ namespace pn {
 
                 {
                     static constexpr int value = 1;
-                    if (Status result = Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)); !result) {
+                    if (Status result = this->setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)); !result) {
+                        (void) Socket::close(PN_PROTOCOL_LAYER_SYSTEM);
                         pn::freeaddrinfo(ai_list);
                         return result;
                     }
@@ -324,21 +335,17 @@ namespace pn {
                     break;
                 }
                 last_error = last_socket_error_code();
-
-                if (Status result = Base::close(); !result) {
-                    pn::freeaddrinfo(ai_list);
-                    return result;
-                }
+                (void) Socket::close(PN_PROTOCOL_LAYER_SYSTEM);
             }
             if (ai_it == nullptr) {
                 pn::freeaddrinfo(ai_list);
                 if (last_error) {
                     return std::unexpected(Error {last_error, "bind"});
                 }
-                return std::unexpected(make_invalid_address_error("bind"));
+                return std::unexpected(make_polynet_error(PN_ERROR_INVALID_ADDRESS, "bind"));
             }
 
-            this->addr = *ai_it->ai_addr;
+            memcpy(&this->addr, ai_it->ai_addr, ai_it->ai_addrlen);
             this->addrlen = ai_it->ai_addrlen;
 
             pn::freeaddrinfo(ai_list);
@@ -350,22 +357,29 @@ namespace pn {
         }
 
         Status bind(const struct sockaddr* addr, socklen_t addrlen) {
+            if (this->is_valid()) {
+                return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "bind"));
+            }
+
             if (Status result = this->init(addr->sa_family, Socktype, Protocol); !result) {
                 return result;
             }
 
             {
                 static constexpr int value = 1;
-                if (Status result = Base::setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)); !result) {
+                if (Status result = this->setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)); !result) {
+                    (void) Socket::close(PN_PROTOCOL_LAYER_SYSTEM);
                     return result;
                 }
             }
 
             if (::bind(this->fd, addr, addrlen) == PN_ERROR) {
-                return std::unexpected(make_last_socket_error("bind"));
+                Error error = make_last_socket_error("bind");
+                (void) Socket::close(PN_PROTOCOL_LAYER_SYSTEM);
+                return std::unexpected(error);
             }
 
-            this->addr = *addr;
+            memcpy(&this->addr, addr, addrlen);
             this->addrlen = addrlen;
 
             return {};
@@ -380,6 +394,10 @@ namespace pn {
             Base(std::forward<Args>(args)...) {}
 
         Status connect(StringView hostname, StringView port, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
+            if (this->is_valid()) {
+                return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "connect"));
+            }
+
             struct addrinfo* ai_list;
             struct addrinfo hints = {};
             hints.ai_family = AF_UNSPEC;
@@ -388,7 +406,6 @@ namespace pn {
 #ifdef AI_IDN
             hints.ai_flags = AI_IDN;
 #endif
-
             if (Status result = getaddrinfo(hostname, port, &hints, &ai_list); !result) {
                 return result;
             }
@@ -402,29 +419,26 @@ namespace pn {
                 }
 
                 if (config_cb && !config_cb(*this)) {
+                    (void) Socket::close(PN_PROTOCOL_LAYER_SYSTEM);
                     pn::freeaddrinfo(ai_list);
-                    return std::unexpected(make_user_callback_error("configure client"));
+                    return std::unexpected(make_polynet_error(PN_ERROR_USER_CALLBACK, "configure client"));
                 }
 
                 if (::connect(this->fd, ai_it->ai_addr, ai_it->ai_addrlen) == PN_OK) {
                     break;
                 }
                 last_error = last_socket_error_code();
-
-                if (Status result = Base::close(); !result) {
-                    pn::freeaddrinfo(ai_list);
-                    return result;
-                }
+                (void) Socket::close(PN_PROTOCOL_LAYER_SYSTEM);
             }
             if (ai_it == nullptr) {
                 pn::freeaddrinfo(ai_list);
                 if (last_error) {
                     return std::unexpected(Error {last_error, "connect"});
                 }
-                return std::unexpected(make_invalid_address_error("connect"));
+                return std::unexpected(make_polynet_error(PN_ERROR_INVALID_ADDRESS, "connect"));
             }
 
-            this->addr = *ai_it->ai_addr;
+            memcpy(&this->addr, ai_it->ai_addr, ai_it->ai_addrlen);
             this->addrlen = ai_it->ai_addrlen;
 
             pn::freeaddrinfo(ai_list);
@@ -436,19 +450,26 @@ namespace pn {
         }
 
         Status connect(const struct sockaddr* addr, socklen_t addrlen, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
+            if (this->is_valid()) {
+                return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "connect"));
+            }
+
             if (Status result = this->init(addr->sa_family, Socktype, Protocol); !result) {
                 return result;
             }
 
             if (config_cb && !config_cb(*this)) {
-                return std::unexpected(make_user_callback_error("configure client"));
+                (void) Socket::close(PN_PROTOCOL_LAYER_SYSTEM);
+                return std::unexpected(make_polynet_error(PN_ERROR_USER_CALLBACK, "configure client"));
             }
 
             if (::connect(this->fd, addr, addrlen) == PN_ERROR) {
-                return std::unexpected(make_last_socket_error("connect"));
+                Error error = make_last_socket_error("connect");
+                (void) Socket::close(PN_PROTOCOL_LAYER_SYSTEM);
+                return std::unexpected(error);
             }
 
-            this->addr = *addr;
+            memcpy(&this->addr, addr, addrlen);
             this->addrlen = addrlen;
 
             return {};
