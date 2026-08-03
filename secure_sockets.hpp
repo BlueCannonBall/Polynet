@@ -34,7 +34,7 @@ namespace pn {
     namespace tcp {
         class SecureConnection : public Connection {
         protected:
-            static constexpr size_t ciphertext_buf_capacity = 4'000;
+            static constexpr size_t ciphertext_buf_capacity = 16'000;
 
             std::mutex ssl_mutex;
             std::mutex ssl_retry_mutex;
