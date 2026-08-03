@@ -114,17 +114,17 @@ namespace pn {
 
     } // namespace detail
 
-    const std::error_category& polynet_category() {
+    const std::error_category& polynet_category() noexcept {
         static const detail::PolynetCategory category;
         return category;
     }
 
-    const std::error_category& winsock_category() {
+    const std::error_category& winsock_category() noexcept {
         static const detail::WinsockCategory category;
         return category;
     }
 
-    const std::error_category& address_info_category() {
+    const std::error_category& address_info_category() noexcept {
         static const detail::AddressInfoCategory category;
         return category;
     }

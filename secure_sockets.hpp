@@ -10,21 +10,21 @@
 #define PN_PROTOCOL_LAYER_SSL (1 << 1)
 
 namespace pn {
-    const std::error_category& ssl_category();
+    const std::error_category& ssl_category() noexcept;
 
-    inline std::error_code ssl_error_code(unsigned long error) {
+    inline std::error_code ssl_error_code(unsigned long error) noexcept {
         return {(int) error, ssl_category()};
     }
 
-    inline std::error_code last_ssl_error_code() {
+    inline std::error_code last_ssl_error_code() noexcept {
         return ssl_error_code(ERR_get_error());
     }
 
-    inline Error make_ssl_error(unsigned long error, StringView operation = {}) {
+    inline Error make_ssl_error(unsigned long error, StringView operation = {}) noexcept {
         return error ? Error {ssl_error_code(error), operation} : make_polynet_error(PN_ERROR_SSL, operation);
     }
 
-    inline Error make_last_ssl_error(StringView operation = {}) {
+    inline Error make_last_ssl_error(StringView operation = {}) noexcept {
         if (std::error_code error = last_ssl_error_code(); error) {
             return {error, operation};
         }
@@ -55,15 +55,15 @@ namespace pn {
 
         public:
             SecureConnection() = default;
-            SecureConnection(sockfd_t fd):
+            SecureConnection(sockfd_t fd) noexcept:
                 Connection(fd) {}
-            SecureConnection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
+            SecureConnection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen) noexcept:
                 Connection(fd, addr, addrlen) {}
-            SecureConnection(SecureConnection&& conn) noexcept {
+            SecureConnection(SecureConnection&& conn) {
                 *this = std::move(conn);
             }
 
-            SecureConnection& operator=(SecureConnection&& conn) noexcept {
+            SecureConnection& operator=(SecureConnection&& conn) {
                 if (this != &conn) {
                     Connection::operator=(std::move(conn));
                     ssl = std::exchange(conn.ssl, nullptr);
@@ -85,7 +85,7 @@ namespace pn {
 
             Status close(int protocol_layers = PN_PROTOCOL_LAYER_DEFAULT) override;
 
-            bool is_secure() const override {
+            bool is_secure() const noexcept override {
                 return ssl;
             }
 
@@ -101,17 +101,17 @@ namespace pn {
             typedef SecureConnection connection_type;
 
             SecureServer() = default;
-            SecureServer(sockfd_t fd, SSL_CTX* ssl_ctx):
+            SecureServer(sockfd_t fd, SSL_CTX* ssl_ctx) noexcept:
                 Server(fd),
                 ssl_ctx(ssl_ctx) {}
-            SecureServer(sockfd_t fd, SSL_CTX* ssl_ctx, const struct sockaddr& addr, socklen_t addrlen):
+            SecureServer(sockfd_t fd, SSL_CTX* ssl_ctx, const struct sockaddr& addr, socklen_t addrlen) noexcept:
                 Server(fd, addr, addrlen),
                 ssl_ctx(ssl_ctx) {}
-            SecureServer(SecureServer&& server) noexcept {
+            SecureServer(SecureServer&& server) {
                 *this = std::move(server);
             }
 
-            SecureServer& operator=(SecureServer&& server) noexcept {
+            SecureServer& operator=(SecureServer&& server) {
                 if (this != &server) {
                     Server::operator=(std::move(server));
                     ssl_ctx = std::exchange(server.ssl_ctx, nullptr);
@@ -133,7 +133,7 @@ namespace pn {
                 return Server::close(protocol_layers);
             }
 
-            bool is_secure() const override {
+            bool is_secure() const noexcept override {
                 return ssl_ctx;
             }
 
@@ -149,11 +149,11 @@ namespace pn {
 
         public:
             SecureClient() = default;
-            SecureClient(SecureClient&& client) noexcept {
+            SecureClient(SecureClient&& client) {
                 *this = std::move(client);
             }
 
-            SecureClient& operator=(SecureClient&& client) noexcept {
+            SecureClient& operator=(SecureClient&& client) {
                 if (this != &client) {
                     BasicClient<SecureConnection, SOCK_STREAM, IPPROTO_TCP>::operator=(std::move(client));
                     ssl_ctx = std::exchange(client.ssl_ctx, nullptr);
@@ -174,7 +174,7 @@ namespace pn {
                 return result;
             }
 
-            bool is_secure() const override {
+            bool is_secure() const noexcept override {
                 return ssl && ssl_ctx;
             }
         };

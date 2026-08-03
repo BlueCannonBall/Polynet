@@ -24,15 +24,15 @@ namespace pn {
         PN_ERROR_ALREADY_INITIALIZED,
     };
 
-    const std::error_category& polynet_category();
-    const std::error_category& winsock_category();
-    const std::error_category& address_info_category();
+    const std::error_category& polynet_category() noexcept;
+    const std::error_category& winsock_category() noexcept;
+    const std::error_category& address_info_category() noexcept;
 
-    inline std::error_code polynet_error_code(ErrorType error) {
+    inline std::error_code polynet_error_code(ErrorType error) noexcept {
         return {error, polynet_category()};
     }
 
-    inline std::error_code socket_error_code(int error) {
+    inline std::error_code socket_error_code(int error) noexcept {
 #ifdef _WIN32
         return {error, winsock_category()};
 #else
@@ -41,7 +41,7 @@ namespace pn {
 #endif
     }
 
-    inline std::error_code last_socket_error_code() {
+    inline std::error_code last_socket_error_code() noexcept {
 #ifdef _WIN32
         return socket_error_code(WSAGetLastError());
 #else
@@ -49,7 +49,7 @@ namespace pn {
 #endif
     }
 
-    inline std::error_code address_info_error_code(int error) {
+    inline std::error_code address_info_error_code(int error) noexcept {
         return {error, address_info_category()};
     }
 
@@ -57,7 +57,7 @@ namespace pn {
         std::error_code code;
         StringView operation;
 
-        constexpr operator bool() const {
+        constexpr operator bool() const noexcept {
             return code.value();
         }
 
@@ -71,19 +71,19 @@ namespace pn {
 
     using Status = Result<void>;
 
-    inline Error make_polynet_error(ErrorType error, StringView operation = {}) {
+    inline Error make_polynet_error(ErrorType error, StringView operation = {}) noexcept {
         return {polynet_error_code(error), operation};
     }
 
-    inline Error make_socket_error(int error, StringView operation = {}) {
+    inline Error make_socket_error(int error, StringView operation = {}) noexcept {
         return {socket_error_code(error), operation};
     }
 
-    inline Error make_last_socket_error(StringView operation = {}) {
+    inline Error make_last_socket_error(StringView operation = {}) noexcept {
         return {last_socket_error_code(), operation};
     }
 
-    inline Error make_address_info_error(int error, StringView operation = {}) {
+    inline Error make_address_info_error(int error, StringView operation = {}) noexcept {
         return {address_info_error_code(error), operation};
     }
 

@@ -12,7 +12,7 @@ namespace pn {
     template <typename CharT, typename Traits = std::char_traits<CharT>>
     class BasicStringView : public std::basic_string_view<CharT, Traits> {
     protected:
-        static constexpr const CharT* empty_string() {
+        static constexpr const CharT* empty_string() noexcept {
             static_assert(
                 std::is_same_v<CharT, char> ||
                     std::is_same_v<CharT, wchar_t> ||
@@ -33,11 +33,11 @@ namespace pn {
         }
 
     public:
-        constexpr BasicStringView(const CharT* str = empty_string()):
+        constexpr BasicStringView(const CharT* str = empty_string()) noexcept:
             std::basic_string_view<CharT, Traits>(str) {}
         BasicStringView(decltype(nullptr)) = delete;
         template <typename Alloc>
-        constexpr BasicStringView(const std::basic_string<CharT, Traits, Alloc>& str):
+        constexpr BasicStringView(const std::basic_string<CharT, Traits, Alloc>& str) noexcept:
             std::basic_string_view<CharT, Traits>(str.c_str(), str.size()) {}
 
         constexpr const CharT* c_str() const noexcept {

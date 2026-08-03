@@ -16,26 +16,21 @@ namespace pn {
         };
     } // namespace detail
 
-    const std::error_category& ssl_category() {
+    const std::error_category& ssl_category() noexcept {
         static const detail::SSLCategory category;
         return category;
     }
 
     namespace tcp {
         namespace detail {
-            Error make_io_error(int ssl_error, StringView operation) {
-                switch (ssl_error) {
-                case SSL_ERROR_WANT_READ:
-                case SSL_ERROR_WANT_WRITE:
-#ifdef _WIN32
-                    return make_socket_error(WSAEWOULDBLOCK, operation);
-#else
-                    return make_socket_error(EAGAIN, operation);
-#endif
-
-                default:
-                    return make_last_ssl_error(operation);
+            bool is_ip_literal(StringView hostname) {
+                if (in_addr ipv4; pn::inet_pton(AF_INET, hostname, &ipv4)) {
+                    return true;
                 }
+                if (in6_addr ipv6; pn::inet_pton(AF_INET6, hostname, &ipv6)) {
+                    return true;
+                }
+                return false;
             }
         } // namespace detail
 
@@ -144,9 +139,11 @@ namespace pn {
                 result = SSL_do_handshake(ssl);
                 if (result <= 0) {
                     ssl_error = SSL_get_error(ssl, result);
-                    error = detail::make_io_error(ssl_error, operation);
-                    if (ssl_error == SSL_ERROR_SSL || ssl_error == SSL_ERROR_SYSCALL) {
-                        ssl_fatal_error = true;
+                    if (ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
+                        error = make_last_ssl_error(operation);
+                        if (ssl_error == SSL_ERROR_SSL || ssl_error == SSL_ERROR_SYSCALL) {
+                            ssl_fatal_error = true;
+                        }
                     }
                 }
 
@@ -158,7 +155,8 @@ namespace pn {
                 }
                 if (ssl_error == SSL_ERROR_WANT_READ) {
                     if (ciphertext_eof) {
-                        return std::unexpected(error);
+                        ssl_fatal_error = true;
+                        return std::unexpected(make_polynet_error(PN_ERROR_SSL, "read SSL ciphertext after EOF"));
                     }
                     if (Result<bool> result = recv_ciphertext(); !result) {
                         return std::unexpected(result.error());
@@ -215,9 +213,11 @@ namespace pn {
                     result = SSL_write(ssl, plaintext, len);
                     if (result <= 0) {
                         ssl_error = SSL_get_error(ssl, result);
-                        error = detail::make_io_error(ssl_error, "send SSL data");
-                        if (ssl_error == SSL_ERROR_SSL || ssl_error == SSL_ERROR_SYSCALL) {
-                            ssl_fatal_error = true;
+                        if (ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
+                            error = make_last_ssl_error("send SSL data");
+                            if (ssl_error == SSL_ERROR_SSL || ssl_error == SSL_ERROR_SYSCALL) {
+                                ssl_fatal_error = true;
+                            }
                         }
                     }
                 }
@@ -237,7 +237,8 @@ namespace pn {
                 }
                 if (ssl_error == SSL_ERROR_WANT_READ) {
                     if (ciphertext_eof) {
-                        return std::unexpected(error);
+                        ssl_fatal_error = true;
+                        return std::unexpected(make_polynet_error(PN_ERROR_SSL, "read SSL ciphertext after EOF"));
                     }
                     if (Result<bool> result = recv_ciphertext(); !result) {
                         return std::unexpected(result.error());
@@ -272,8 +273,8 @@ namespace pn {
                     result = peek ? SSL_peek(ssl, plaintext, len) : SSL_read(ssl, plaintext, len);
                     if (result <= 0) {
                         ssl_error = SSL_get_error(ssl, result);
-                        if (ssl_error != SSL_ERROR_ZERO_RETURN) {
-                            error = detail::make_io_error(ssl_error, operation);
+                        if (ssl_error != SSL_ERROR_ZERO_RETURN && ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
+                            error = make_last_ssl_error(operation);
                         }
                         if (ssl_error == SSL_ERROR_SSL || ssl_error == SSL_ERROR_SYSCALL) {
                             ssl_fatal_error = true;
@@ -296,7 +297,8 @@ namespace pn {
                 }
                 if (ssl_error == SSL_ERROR_WANT_READ) {
                     if (ciphertext_eof) {
-                        return std::unexpected(error);
+                        ssl_fatal_error = true;
+                        return std::unexpected(make_polynet_error(PN_ERROR_SSL, "read SSL ciphertext after EOF"));
                     }
                     if (Result<bool> result = recv_ciphertext(); !result) {
                         return std::unexpected(result.error());
@@ -422,7 +424,7 @@ namespace pn {
                     return result;
                 }
 
-                if (!SSL_set_tlsext_host_name(ssl, hostname.c_str())) {
+                if (!detail::is_ip_literal(hostname) && !SSL_set_tlsext_host_name(ssl, hostname.c_str())) {
                     Error error = make_last_ssl_error("set SSL hostname");
                     (void) SecureConnection::close();
                     SSL_CTX_free(new_ssl_ctx);

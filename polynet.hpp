@@ -106,7 +106,7 @@ namespace pn {
 #endif
 
     namespace detail {
-        inline int closesocket(sockfd_t fd) {
+        inline int closesocket(sockfd_t fd) noexcept {
 #ifdef _WIN32
             return ::closesocket(fd);
 #else
@@ -155,7 +155,7 @@ namespace pn {
         return getaddrinfo(hostname, str_port, hints, ret);
     }
 
-    inline void freeaddrinfo(struct addrinfo* ai) {
+    inline void freeaddrinfo(struct addrinfo* ai) noexcept {
         ::freeaddrinfo(ai);
     }
 
@@ -196,18 +196,18 @@ namespace pn {
                                            // to which the client is connected to for clients
 
         Socket() = default;
-        Socket(sockfd_t fd):
+        Socket(sockfd_t fd) noexcept:
             fd(fd) {}
-        Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
+        Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen) noexcept:
             fd(fd),
             addrlen(addrlen) {
             memcpy(&this->addr, &addr, addrlen);
         }
-        Socket(Socket&& socket) noexcept {
+        Socket(Socket&& socket) {
             *this = std::move(socket);
         }
 
-        Socket& operator=(Socket&& socket) noexcept {
+        Socket& operator=(Socket&& socket) {
             if (this != &socket) {
                 (void) close();
                 fd = std::exchange(socket.fd, PN_INVALID_SOCKFD);
@@ -269,23 +269,23 @@ namespace pn {
             return {};
         }
 
-        bool is_valid() const {
+        bool is_valid() const noexcept {
             return fd != PN_INVALID_SOCKFD;
         }
 
-        operator bool() const {
+        operator bool() const noexcept {
             return is_valid();
         }
 
-        virtual bool is_secure() const {
+        virtual bool is_secure() const noexcept {
             return false;
         }
 
-        bool operator==(const Socket& socket) const {
+        bool operator==(const Socket& socket) const noexcept {
             return fd == socket.fd;
         }
 
-        bool operator!=(const Socket& socket) const {
+        bool operator!=(const Socket& socket) const noexcept {
             return fd != socket.fd;
         }
     };
@@ -480,9 +480,9 @@ namespace pn {
         class Connection : public Socket {
         public:
             Connection() = default;
-            Connection(sockfd_t fd):
+            Connection(sockfd_t fd) noexcept:
                 Socket(fd) {}
-            Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
+            Connection(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen) noexcept:
                 Socket(fd, addr, addrlen) {}
 
             virtual Result<size_t> send(const void* buf, size_t len) {
@@ -548,7 +548,7 @@ namespace pn {
             std::vector<char> data;
             size_t cursor = 0;
 
-            void clear() {
+            void clear() noexcept {
                 data.clear();
                 cursor = 0;
             }
@@ -571,7 +571,7 @@ namespace pn {
                 return *this;
             }
 
-            size_t available() const {
+            size_t available() const noexcept {
                 return data.size() - cursor;
             }
 
@@ -586,9 +586,9 @@ namespace pn {
             typedef Connection connection_type;
 
             Server() = default;
-            Server(sockfd_t fd):
+            Server(sockfd_t fd) noexcept:
                 BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(fd) {}
-            Server(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
+            Server(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen) noexcept:
                 BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>(fd, addr, addrlen) {}
 
             // Return false from the callback to stop listening
@@ -602,9 +602,9 @@ namespace pn {
         class Socket : public pn::Socket {
         public:
             Socket() = default;
-            Socket(sockfd_t fd):
+            Socket(sockfd_t fd) noexcept:
                 pn::Socket(fd) {}
-            Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen):
+            Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen) noexcept:
                 pn::Socket(fd, addr, addrlen) {}
 
             virtual Result<size_t> sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen, int flags = 0) {
