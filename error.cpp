@@ -19,7 +19,7 @@ namespace pn {
                 case PN_ERROR_NONE: return "Success";
                 case PN_ERROR_INVALID_ADDRESS: return "Invalid address";
                 case PN_ERROR_USER_CALLBACK: return "User callback failed";
-                case PN_ERROR_SSL: return "SSL error";
+                case PN_ERROR_TLS: return "TLS error";
                 case PN_ERROR_ALREADY_INITIALIZED: return "Already initialized";
                 default: return "Unknown Polynet error " + std::to_string(error);
                 }

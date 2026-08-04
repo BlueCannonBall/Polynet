@@ -30,4 +30,4 @@ if (pn::Status result = client.connect("localhost", 8000); !result) {
 
 (void) pn::quit();
 ```
-See `polynet.hpp` and `secure_sockets.hpp` to check out more ways to use Polynet. Since the secure examples are a bit longer, they can be found in the examples directory.
+See `polynet.hpp` and `tls.hpp` to check out more ways to use Polynet. Since the secure examples are a bit longer, they can be found in the examples directory.

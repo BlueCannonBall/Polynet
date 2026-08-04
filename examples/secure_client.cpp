@@ -1,20 +1,25 @@
 #include "../polynet.hpp"
-#include "../secure_sockets.hpp"
+#include "../tls.hpp"
 #include <iostream>
 
 int main() {
     (void) pn::init();
 
-    pn::tcp::SecureClient client;
+    pn::tcp::TLSClient client;
     if (pn::Status result = client.connect("localhost", 443); !result) {
         std::cerr << "Error: " << result.error().message() << std::endl;
         return 1;
     }
-    if (pn::Status result = client.ssl_init("localhost", SSL_VERIFY_PEER, "cert.pem"); !result) {
+    pn::TLSContext context;
+    if (pn::Status result = context.init_client(SSL_VERIFY_PEER, "cert.pem"); !result) {
         std::cerr << "Error: " << result.error().message() << std::endl;
         return 1;
     }
-    if (pn::Status result = client.ssl_connect(); !result) {
+    if (pn::Status result = client.tls_init(context, "localhost"); !result) {
+        std::cerr << "Error: " << result.error().message() << std::endl;
+        return 1;
+    }
+    if (pn::Status result = client.tls_connect(); !result) {
         std::cerr << "Error: " << result.error().message() << std::endl;
         return 1;
     }

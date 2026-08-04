@@ -1,24 +1,25 @@
 #include "../polynet.hpp"
-#include "../secure_sockets.hpp"
+#include "../tls.hpp"
 #include <iostream>
 #include <openssl/ssl.h>
 
 int main() {
     (void) pn::init();
 
-    pn::tcp::SecureServer server;
+    pn::tcp::TLSServer server;
     if (pn::Status result = server.bind("0.0.0.0", 443); !result) {
         std::cerr << "Error: " << result.error().message() << std::endl;
         return 1;
     }
-    if (pn::Status result = server.ssl_init("cert.pem", "key.pem", SSL_FILETYPE_PEM); !result) {
+    pn::TLSContext context;
+    if (pn::Status result = context.init_server("cert.pem", "key.pem", SSL_FILETYPE_PEM); !result) {
         std::cerr << "Error: " << result.error().message() << std::endl;
         return 1;
     }
 
-    if (pn::Status result = server.listen([](pn::tcp::SecureConnection conn) {
+    if (pn::Status result = server.listen(context, [](pn::tcp::TLSConnection conn) {
             // This is only necessary for secure servers
-            if (pn::Status result = conn.ssl_accept(); !result) {
+            if (pn::Status result = conn.tls_accept(); !result) {
                 std::cerr << "Error: " << result.error().message() << std::endl;
                 return true;
             }

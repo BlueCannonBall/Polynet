@@ -20,7 +20,7 @@ namespace pn {
         PN_ERROR_NONE,
         PN_ERROR_INVALID_ADDRESS,
         PN_ERROR_USER_CALLBACK,
-        PN_ERROR_SSL,
+        PN_ERROR_TLS,
         PN_ERROR_ALREADY_INITIALIZED,
     };
 
