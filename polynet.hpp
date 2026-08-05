@@ -116,7 +116,7 @@ namespace pn {
         // sendall and recvall make up the difference
         constexpr size_t max_transfer_len = INT_MAX;
 
-        inline int clamp_transfer_len(size_t len) noexcept {
+        constexpr int clamp_transfer_len(size_t len) noexcept {
             return len < max_transfer_len ? len : max_transfer_len;
         }
     } // namespace detail
@@ -324,7 +324,7 @@ namespace pn {
 
                 {
                     static constexpr int value = 1;
-                    if (Status result = this->setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)); !result) {
+                    if (Status result = this->setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof value); !result) {
                         (void) Socket::close(PN_PROTOCOL_LAYER_SYSTEM);
                         pn::freeaddrinfo(ai_list);
                         return result;
@@ -367,7 +367,7 @@ namespace pn {
 
             {
                 static constexpr int value = 1;
-                if (Status result = this->setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof(int)); !result) {
+                if (Status result = this->setsockopt(SOL_SOCKET, SO_REUSEADDR, &value, sizeof value); !result) {
                     (void) Socket::close(PN_PROTOCOL_LAYER_SYSTEM);
                     return result;
                 }
@@ -502,7 +502,7 @@ namespace pn {
         public:
             size_t capacity;
 
-            BufReceiver(size_t capacity = 4'000):
+            BufReceiver(size_t capacity = 4'000) noexcept:
                 capacity(capacity) {}
             BufReceiver(BufReceiver&& buf_receiver) noexcept {
                 *this = std::move(buf_receiver);
