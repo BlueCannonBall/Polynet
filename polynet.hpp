@@ -500,11 +500,6 @@ namespace pn {
             size_t cursor = 0;
 
         public:
-            void clear() noexcept {
-                data.clear();
-                cursor = 0;
-            }
-
             size_t capacity;
 
             BufReceiver(size_t capacity = 4'000):
@@ -520,6 +515,11 @@ namespace pn {
                     capacity = std::exchange(buf_receiver.capacity, 4'000);
                 }
                 return *this;
+            }
+
+            void clear() noexcept {
+                data.clear();
+                cursor = 0;
             }
 
             size_t available() const noexcept {
