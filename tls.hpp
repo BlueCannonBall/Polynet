@@ -3,9 +3,9 @@
 
 #include "polynet.hpp"
 #include <mutex>
-#include <vector>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <vector>
 
 // Protocol layers
 #define PN_PROTOCOL_LAYER_TLS (1 << 1)
@@ -97,7 +97,6 @@ namespace pn {
             BIO* recv_bio = nullptr;
             std::vector<char> pending;
             size_t pending_cursor = 0;
-            bool fatal_ssl_error = false;
 
             Status flush(bool receiving);
             Result<bool> fill();
@@ -169,6 +168,7 @@ namespace pn {
 
         public:
             SSL* ssl = nullptr; // Guarded by ssl_mutex during sends and receives
+            bool fatal_ssl_error = false;
 
             TLSConnection() = default;
             using Connection::Connection;
