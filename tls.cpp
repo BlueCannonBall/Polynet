@@ -1,7 +1,7 @@
 #include "tls.hpp"
 
 namespace pn {
-    namespace detail {
+    namespace {
         class SSLCategory : public std::error_category {
         public:
             const char* name() const noexcept override {
@@ -17,10 +17,10 @@ namespace pn {
                 return buf;
             }
         };
-    } // namespace detail
+    } // namespace
 
     const std::error_category& ssl_category() noexcept {
-        static const detail::SSLCategory category;
+        static const SSLCategory category;
         return category;
     }
 
@@ -94,7 +94,7 @@ namespace pn {
     }
 
     namespace tcp {
-        namespace detail {
+        namespace {
             bool is_ip_literal(StringView hostname) {
                 if (in_addr ipv4; pn::inet_pton(AF_INET, hostname, &ipv4)) {
                     return true;
@@ -104,7 +104,7 @@ namespace pn {
                 }
                 return false;
             }
-        } // namespace detail
+        } // namespace
 
         Status TLSConnection::tls_init(const TLSContext& context) {
             if (this->ssl) {
@@ -336,7 +336,7 @@ namespace pn {
             }
 
             ERR_clear_error();
-            if (!detail::is_ip_literal(hostname) && !SSL_set_tlsext_host_name(ssl, hostname.c_str())) {
+            if (!is_ip_literal(hostname) && !SSL_set_tlsext_host_name(ssl, hostname.c_str())) {
                 Error error = take_ssl_error("set TLS hostname");
                 (void) TLSConnection::close(PN_PROTOCOL_LAYER_TLS);
                 return std::unexpected(error);

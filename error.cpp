@@ -7,7 +7,7 @@
 #endif
 
 namespace pn {
-    namespace detail {
+    namespace {
         class PolynetCategory : public std::error_category {
         public:
             const char* name() const noexcept override {
@@ -112,20 +112,20 @@ namespace pn {
             }
         };
 
-    } // namespace detail
+    } // namespace
 
     const std::error_category& polynet_category() noexcept {
-        static const detail::PolynetCategory category;
+        static const PolynetCategory category;
         return category;
     }
 
     const std::error_category& winsock_category() noexcept {
-        static const detail::WinsockCategory category;
+        static const WinsockCategory category;
         return category;
     }
 
     const std::error_category& address_info_category() noexcept {
-        static const detail::AddressInfoCategory category;
+        static const AddressInfoCategory category;
         return category;
     }
 } // namespace pn

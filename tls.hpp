@@ -129,7 +129,14 @@ namespace pn {
                         }
                     }
 
-                    if (Status flushed = flush(receiving); !flushed) {
+                    // Plaintext already in the caller's buffer cannot be read again, so a
+                    // failed flush is left for the next operation to report rather than
+                    // costing the caller data that did arrive
+                    Status flushed = flush(receiving);
+                    if (receiving && result > 0) {
+                        return result;
+                    }
+                    if (!flushed) {
                         return std::unexpected(flushed.error());
                     }
                     if (result > 0) {

@@ -553,12 +553,12 @@ namespace pn {
             std::vector<char> data;
             size_t cursor = 0;
 
+        public:
             void clear() noexcept {
                 data.clear();
                 cursor = 0;
             }
 
-        public:
             size_t capacity;
 
             BufReceiver(size_t capacity = 4'000):
