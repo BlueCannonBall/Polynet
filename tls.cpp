@@ -139,7 +139,7 @@ namespace pn {
             this->send_bio = send_bio;
             pending.clear();
             pending_cursor = 0;
-            ssl_fatal_error = false;
+            fatal_ssl_error = false;
 
             return {};
         }
@@ -195,8 +195,11 @@ namespace pn {
                 std::lock_guard<std::mutex> lock(ssl_mutex);
                 capacity = BIO_get_write_guarantee(recv_bio);
             }
+            // A sender and a receiver both reach here when each is told to want more
+            // ciphertext, and whichever arrives second finds the buffer already refilled.
+            // That is ciphertext waiting to be processed, not a failure
             if (!capacity) {
-                return std::unexpected(make_ssl_error(0, "buffer TLS ciphertext"));
+                return true;
             }
 
             char buf[buf_capacity];
@@ -240,13 +243,13 @@ namespace pn {
 
         Status TLSConnection::close(int protocol_layers) {
             if (ssl && (protocol_layers & PN_PROTOCOL_LAYER_TLS)) {
-                if (!ssl_fatal_error) SSL_shutdown(ssl);
+                if (!fatal_ssl_error) SSL_shutdown(ssl);
                 BIO_free(std::exchange(recv_bio, nullptr));
                 BIO_free(std::exchange(send_bio, nullptr));
                 SSL_free(std::exchange(ssl, nullptr));
                 pending.clear();
                 pending_cursor = 0;
-                ssl_fatal_error = false;
+                fatal_ssl_error = false;
             }
             return Connection::close(protocol_layers);
         }

@@ -490,59 +490,11 @@ namespace pn {
                 return false;
             }
 
-            virtual Result<size_t> send(const void* buf, size_t len) {
-                for (;;) {
-                    ssize_t result;
-                    if ((result = ::send(fd, (const char*) buf, detail::clamp_transfer_len(len), 0)) == PN_ERROR) {
-#ifndef _WIN32
-                        std::error_code error = last_socket_error_code();
-                        if (error.value() == EINTR) {
-                            continue;
-                        }
-                        return std::unexpected(Error {error, "send"});
-#else
-                        return std::unexpected(make_last_socket_error("send"));
-#endif
-                    }
-                    return result;
-                }
-            }
+            virtual Result<size_t> send(const void* buf, size_t len);
 
-            virtual Result<size_t> recv(void* buf, size_t len) {
-                for (;;) {
-                    ssize_t result;
-                    if ((result = ::recv(fd, (char*) buf, detail::clamp_transfer_len(len), 0)) == PN_ERROR) {
-#ifndef _WIN32
-                        std::error_code error = last_socket_error_code();
-                        if (error.value() == EINTR) {
-                            continue;
-                        }
-                        return std::unexpected(Error {error, "receive"});
-#else
-                        return std::unexpected(make_last_socket_error("receive"));
-#endif
-                    }
-                    return result;
-                }
-            }
+            virtual Result<size_t> recv(void* buf, size_t len);
 
-            virtual Result<size_t> peek(void* buf, size_t len) {
-                for (;;) {
-                    ssize_t result;
-                    if ((result = ::recv(fd, (char*) buf, detail::clamp_transfer_len(len), MSG_PEEK)) == PN_ERROR) {
-#ifndef _WIN32
-                        std::error_code error = last_socket_error_code();
-                        if (error.value() == EINTR) {
-                            continue;
-                        }
-                        return std::unexpected(Error {error, "peek"});
-#else
-                        return std::unexpected(make_last_socket_error("peek"));
-#endif
-                    }
-                    return result;
-                }
-            }
+            virtual Result<size_t> peek(void* buf, size_t len);
 
             Result<size_t> sendall(const void* buf, size_t len);
             Result<size_t> recvall(void* buf, size_t len);
@@ -602,170 +554,40 @@ namespace pn {
 
     namespace udp {
         class Socket : public pn::Socket {
+        protected:
+            // POSIX reports a datagram that did not fit through recvmsg's output flags, since
+            // MSG_TRUNC as an input flag is a Linux extension. Winsock has neither, but already
+            // fails an oversized datagram with WSAEMSGSIZE
+            Result<size_t> recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags, StringView operation);
+
         public:
             Socket() = default;
             using pn::Socket::Socket;
 
-            virtual Result<size_t> send(const void* buf, size_t len) {
-                if (len > detail::max_transfer_len) { // Clamping would silently truncate the datagram
-                    return std::unexpected(Error {std::make_error_code(std::errc::message_size), "send datagram"});
-                }
-
-                for (;;) {
-                    ssize_t result;
-                    if ((result = ::send(fd, (const char*) buf, len, 0)) == PN_ERROR) {
-#ifndef _WIN32
-                        std::error_code error = last_socket_error_code();
-                        if (error.value() == EINTR) {
-                            continue;
-                        }
-                        return std::unexpected(Error {error, "send datagram"});
-#else
-                        return std::unexpected(make_last_socket_error("send datagram"));
-#endif
-                    }
-                    return result;
-                }
-            }
+            virtual Result<size_t> send(const void* buf, size_t len);
 
             // Winsock already fails an oversized datagram with WSAEMSGSIZE, while POSIX discards
             // the remainder and reports the buffer size, which is indistinguishable from a datagram
             // that happened to fit, so both platforms are made to report the loss
             virtual Result<size_t> recv(void* buf, size_t len) {
-#ifndef _WIN32
-                static constexpr int flags = MSG_TRUNC; // Asks for the datagram's real length
-#else
-                static constexpr int flags = 0; // Winsock fails oversized datagrams outright
-#endif
-                for (;;) {
-                    ssize_t result;
-                    if ((result = ::recv(fd, (char*) buf, detail::clamp_transfer_len(len), flags)) == PN_ERROR) {
-#ifndef _WIN32
-                        std::error_code error = last_socket_error_code();
-                        if (error.value() == EINTR) {
-                            continue;
-                        }
-                        return std::unexpected(Error {error, "receive datagram"});
-#else
-                        return std::unexpected(make_last_socket_error("receive datagram"));
-#endif
-                    }
-#ifndef _WIN32
-                    if ((size_t) result > len) {
-                        return std::unexpected(Error {std::make_error_code(std::errc::message_size), "receive datagram"});
-                    }
-#endif
-                    return result;
-                }
+                return recvfrom(buf, len, nullptr, nullptr, 0, "receive datagram");
             }
 
-            virtual Result<size_t> sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen) {
-                if (len > detail::max_transfer_len) { // Clamping would silently truncate the datagram
-                    return std::unexpected(Error {std::make_error_code(std::errc::message_size), "send datagram"});
-                }
-
-                for (;;) {
-                    ssize_t result;
-                    if ((result = ::sendto(fd, (const char*) buf, len, 0, dest_addr, addrlen)) == PN_ERROR) {
-#ifndef _WIN32
-                        std::error_code error = last_socket_error_code();
-                        if (error.value() == EINTR) {
-                            continue;
-                        }
-                        return std::unexpected(Error {error, "send datagram"});
-#else
-                        return std::unexpected(make_last_socket_error("send datagram"));
-#endif
-                    }
-                    return result;
-                }
-            }
+            virtual Result<size_t> sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen);
 
             // See recv on MSG_TRUNC
             virtual Result<size_t> recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen) {
-#ifndef _WIN32
-                static constexpr int flags = MSG_TRUNC; // Asks for the datagram's real length
-#else
-                static constexpr int flags = 0; // Winsock fails oversized datagrams outright
-#endif
-                for (;;) {
-                    ssize_t result;
-                    if ((result = ::recvfrom(fd, (char*) buf, detail::clamp_transfer_len(len), flags, src_addr, addrlen)) == PN_ERROR) {
-#ifndef _WIN32
-                        std::error_code error = last_socket_error_code();
-                        if (error.value() == EINTR) {
-                            continue;
-                        }
-                        return std::unexpected(Error {error, "receive datagram"});
-#else
-                        return std::unexpected(make_last_socket_error("receive datagram"));
-#endif
-                    }
-#ifndef _WIN32
-                    if ((size_t) result > len) {
-                        return std::unexpected(Error {std::make_error_code(std::errc::message_size), "receive datagram"});
-                    }
-#endif
-                    return result;
-                }
+                return recvfrom(buf, len, src_addr, addrlen, 0, "receive datagram");
             }
 
             // Leaves the datagram queued, as tcp::Connection::peek does for stream data
             virtual Result<size_t> peek(void* buf, size_t len) {
-#ifndef _WIN32
-                static constexpr int flags = MSG_PEEK | MSG_TRUNC;
-#else
-                static constexpr int flags = MSG_PEEK;
-#endif
-                for (;;) {
-                    ssize_t result;
-                    if ((result = ::recv(fd, (char*) buf, detail::clamp_transfer_len(len), flags)) == PN_ERROR) {
-#ifndef _WIN32
-                        std::error_code error = last_socket_error_code();
-                        if (error.value() == EINTR) {
-                            continue;
-                        }
-                        return std::unexpected(Error {error, "peek datagram"});
-#else
-                        return std::unexpected(make_last_socket_error("peek datagram"));
-#endif
-                    }
-#ifndef _WIN32
-                    if ((size_t) result > len) {
-                        return std::unexpected(Error {std::make_error_code(std::errc::message_size), "peek datagram"});
-                    }
-#endif
-                    return result;
-                }
+                return recvfrom(buf, len, nullptr, nullptr, MSG_PEEK, "peek datagram");
             }
 
             // See peek
             virtual Result<size_t> peekfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen) {
-#ifndef _WIN32
-                static constexpr int flags = MSG_PEEK | MSG_TRUNC;
-#else
-                static constexpr int flags = MSG_PEEK;
-#endif
-                for (;;) {
-                    ssize_t result;
-                    if ((result = ::recvfrom(fd, (char*) buf, detail::clamp_transfer_len(len), flags, src_addr, addrlen)) == PN_ERROR) {
-#ifndef _WIN32
-                        std::error_code error = last_socket_error_code();
-                        if (error.value() == EINTR) {
-                            continue;
-                        }
-                        return std::unexpected(Error {error, "peek datagram"});
-#else
-                        return std::unexpected(make_last_socket_error("peek datagram"));
-#endif
-                    }
-#ifndef _WIN32
-                    if ((size_t) result > len) {
-                        return std::unexpected(Error {std::make_error_code(std::errc::message_size), "peek datagram"});
-                    }
-#endif
-                    return result;
-                }
+                return recvfrom(buf, len, src_addr, addrlen, MSG_PEEK, "peek datagram");
             }
         };
 

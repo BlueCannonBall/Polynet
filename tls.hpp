@@ -96,7 +96,7 @@ namespace pn {
             BIO* recv_bio = nullptr;
             std::vector<char> pending;
             size_t pending_cursor = 0;
-            bool ssl_fatal_error = false;
+            bool fatal_ssl_error = false;
 
             Status flush(bool receiving);
             Result<bool> fill();
@@ -124,7 +124,7 @@ namespace pn {
                                 error = take_ssl_error(operation);
                             }
                             if (ssl_error == SSL_ERROR_SSL || ssl_error == SSL_ERROR_SYSCALL) {
-                                ssl_fatal_error = true;
+                                fatal_ssl_error = true;
                             }
                         }
                     }
@@ -147,7 +147,7 @@ namespace pn {
                     }
                     if (ssl_error == SSL_ERROR_WANT_READ) {
                         if (eof) {
-                            ssl_fatal_error = true;
+                            fatal_ssl_error = true;
                             return std::unexpected(make_polynet_error(PN_ERROR_TLS, "read TLS ciphertext after EOF"));
                         }
                         if (Result<bool> received = fill(); !received) {
@@ -183,7 +183,7 @@ namespace pn {
                     send_bio = std::exchange(conn.send_bio, nullptr);
                     pending = std::move(conn.pending);
                     pending_cursor = std::exchange(conn.pending_cursor, 0);
-                    ssl_fatal_error = std::exchange(conn.ssl_fatal_error, false);
+                    fatal_ssl_error = std::exchange(conn.fatal_ssl_error, false);
                 }
                 return *this;
             }

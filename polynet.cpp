@@ -1,6 +1,9 @@
 #include "polynet.hpp"
 #include <algorithm>
 #include <string.h>
+#ifndef _WIN32
+    #include <sys/uio.h>
+#endif
 
 namespace pn {
 #ifdef _WIN32
@@ -22,6 +25,60 @@ namespace pn {
     }
 
     namespace tcp {
+        Result<size_t> Connection::send(const void* buf, size_t len) {
+            for (;;) {
+                ssize_t result;
+                if ((result = ::send(fd, (const char*) buf, detail::clamp_transfer_len(len), 0)) == PN_ERROR) {
+#ifndef _WIN32
+                    std::error_code error = last_socket_error_code();
+                    if (error.value() == EINTR) {
+                        continue;
+                    }
+                    return std::unexpected(Error {error, "send"});
+#else
+                    return std::unexpected(make_last_socket_error("send"));
+#endif
+                }
+                return result;
+            }
+        }
+
+        Result<size_t> Connection::recv(void* buf, size_t len) {
+            for (;;) {
+                ssize_t result;
+                if ((result = ::recv(fd, (char*) buf, detail::clamp_transfer_len(len), 0)) == PN_ERROR) {
+#ifndef _WIN32
+                    std::error_code error = last_socket_error_code();
+                    if (error.value() == EINTR) {
+                        continue;
+                    }
+                    return std::unexpected(Error {error, "receive"});
+#else
+                    return std::unexpected(make_last_socket_error("receive"));
+#endif
+                }
+                return result;
+            }
+        }
+
+        Result<size_t> Connection::peek(void* buf, size_t len) {
+            for (;;) {
+                ssize_t result;
+                if ((result = ::recv(fd, (char*) buf, detail::clamp_transfer_len(len), MSG_PEEK)) == PN_ERROR) {
+#ifndef _WIN32
+                    std::error_code error = last_socket_error_code();
+                    if (error.value() == EINTR) {
+                        continue;
+                    }
+                    return std::unexpected(Error {error, "peek"});
+#else
+                    return std::unexpected(make_last_socket_error("peek"));
+#endif
+                }
+                return result;
+            }
+        }
+
         Result<size_t> Connection::sendall(const void* buf, size_t len) {
             size_t sent = 0;
             while (sent < len) {
@@ -192,4 +249,86 @@ namespace pn {
             return {};
         }
     } // namespace tcp
+
+    namespace udp {
+        Result<size_t> Socket::recvfrom(void* buf, size_t len, struct sockaddr* src_addr, socklen_t* addrlen, int flags, StringView operation) {
+            for (;;) {
+                ssize_t result;
+#ifdef _WIN32
+                if ((result = ::recvfrom(fd, (char*) buf, detail::clamp_transfer_len(len), flags, src_addr, addrlen)) == PN_ERROR) {
+                    return std::unexpected(make_last_socket_error(operation));
+                }
+#else
+                struct iovec iov;
+                iov.iov_base = buf;
+                iov.iov_len = detail::clamp_transfer_len(len);
+
+                struct msghdr msg = {};
+                msg.msg_name = src_addr;
+                msg.msg_namelen = addrlen ? *addrlen : 0;
+                msg.msg_iov = &iov;
+                msg.msg_iovlen = 1;
+
+                if ((result = ::recvmsg(fd, &msg, flags)) == PN_ERROR) {
+                    std::error_code error = last_socket_error_code();
+                    if (error.value() == EINTR) {
+                        continue;
+                    }
+                    return std::unexpected(Error {error, operation});
+                }
+                if (addrlen) {
+                    *addrlen = msg.msg_namelen;
+                }
+                if (msg.msg_flags & MSG_TRUNC) {
+                    return std::unexpected(Error {std::make_error_code(std::errc::message_size), operation});
+                }
+#endif
+                return result;
+            }
+        }
+
+        Result<size_t> Socket::send(const void* buf, size_t len) {
+            if (len > detail::max_transfer_len) { // Clamping would silently truncate the datagram
+                return std::unexpected(Error {std::make_error_code(std::errc::message_size), "send datagram"});
+            }
+
+            for (;;) {
+                ssize_t result;
+                if ((result = ::send(fd, (const char*) buf, len, 0)) == PN_ERROR) {
+#ifndef _WIN32
+                    std::error_code error = last_socket_error_code();
+                    if (error.value() == EINTR) {
+                        continue;
+                    }
+                    return std::unexpected(Error {error, "send datagram"});
+#else
+                    return std::unexpected(make_last_socket_error("send datagram"));
+#endif
+                }
+                return result;
+            }
+        }
+
+        Result<size_t> Socket::sendto(const void* buf, size_t len, const struct sockaddr* dest_addr, socklen_t addrlen) {
+            if (len > detail::max_transfer_len) { // Clamping would silently truncate the datagram
+                return std::unexpected(Error {std::make_error_code(std::errc::message_size), "send datagram"});
+            }
+
+            for (;;) {
+                ssize_t result;
+                if ((result = ::sendto(fd, (const char*) buf, len, 0, dest_addr, addrlen)) == PN_ERROR) {
+#ifndef _WIN32
+                    std::error_code error = last_socket_error_code();
+                    if (error.value() == EINTR) {
+                        continue;
+                    }
+                    return std::unexpected(Error {error, "send datagram"});
+#else
+                    return std::unexpected(make_last_socket_error("send datagram"));
+#endif
+                }
+                return result;
+            }
+        }
+    } // namespace udp
 } // namespace pn
