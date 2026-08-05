@@ -1,6 +1,7 @@
 #include "../polynet.hpp"
 #include "../tls.hpp"
 #include <iostream>
+#include <openssl/ssl.h>
 
 int main() {
     (void) pn::init();

@@ -1,4 +1,6 @@
 #include "tls.hpp"
+#include <algorithm>
+#include <errno.h>
 
 namespace pn {
     namespace {

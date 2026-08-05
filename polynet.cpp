@@ -1,5 +1,6 @@
 #include "polynet.hpp"
 #include <algorithm>
+#include <errno.h>
 #include <string.h>
 #ifndef _WIN32
     #include <sys/uio.h>

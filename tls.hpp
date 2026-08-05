@@ -3,6 +3,7 @@
 
 #include "polynet.hpp"
 #include <mutex>
+#include <vector>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 

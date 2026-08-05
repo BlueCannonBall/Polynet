@@ -16,13 +16,8 @@
     #include <ws2tcpip.h>
 #else
     #include <arpa/inet.h>
-    #include <errno.h>
     #include <netdb.h>
     #include <netinet/in.h>
-    #include <netinet/ip.h>
-    #include <netinet/ip6.h>
-    #include <netinet/tcp.h>
-    #include <netinet/udp.h>
     #include <signal.h>
     #include <stddef.h>
     #include <stdint.h>
@@ -36,7 +31,6 @@
 #include <limits.h>
 #include <string.h>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <vector>
 #if __has_include(<endian.h>)
