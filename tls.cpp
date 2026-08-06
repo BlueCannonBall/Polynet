@@ -295,36 +295,23 @@ namespace pn {
             });
         }
 
-        Status TLSServer::listen(const TLSContext& context, const std::function<bool(connection_type)>& cb, int backlog) { // This function BLOCKS
+        Status TLSServer::listen(const TLSContext* context, const std::function<bool(connection_type)>& cb, int backlog) { // This function BLOCKS
             if (::listen(fd, backlog) == PN_ERROR) {
                 return std::unexpected(make_last_socket_error("listen"));
             }
 
             for (;;) {
                 connection_type conn;
-                if ((conn.fd = accept(fd, (struct sockaddr*) &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
-                    std::error_code error = last_socket_error_code();
-#ifdef _WIN32
-                    if (error.value() != WSAECONNRESET) {
-                        return std::unexpected(Error {error, "accept"});
-                    }
-                    continue;
-#else
-                    switch (error.value()) {
-                    default:
-                        return std::unexpected(Error {error, "accept"});
-
-                    case EINTR:
-                    case EPERM:
-                    case EPROTO:
-                    case ECONNABORTED:
-                        continue;
-                    }
-#endif
+                if (Result<sockfd_t> result = accept((struct sockaddr*) &conn.addr, &conn.addrlen); !result) {
+                    return std::unexpected(result.error());
+                } else {
+                    conn.fd = *result;
                 }
 
-                if (Status result = conn.tls_init(context); !result) { // One connection failing to
-                    continue;                                          // initialize isn't fatal to the server
+                if (context) {
+                    if (Status result = conn.tls_init(*context); !result) { // One connection failing to
+                        continue;                                           // initialize isn't fatal to the server
+                    }
                 }
 
                 if (!cb(std::move(conn))) { // Connections CANNOT be accepted while the callback is blocking
@@ -333,6 +320,14 @@ namespace pn {
             }
 
             return {};
+        }
+
+        Status TLSServer::listen(const TLSContext& context, const std::function<bool(connection_type)>& cb, int backlog) {
+            return listen(&context, cb, backlog);
+        }
+
+        Status TLSServer::listen(const std::function<bool(connection_type)>& cb, int backlog) {
+            return listen(nullptr, cb, backlog);
         }
 
         Status TLSClient::tls_init(const TLSContext& context, StringView hostname) {

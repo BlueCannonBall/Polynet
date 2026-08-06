@@ -541,6 +541,11 @@ namespace pn {
 
             // Return false from the callback to stop listening
             Status listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
+
+        protected:
+            // Retries the failures a server can carry on through, so an error from this
+            // means listening cannot continue
+            Result<sockfd_t> accept(struct sockaddr* addr, socklen_t* addrlen);
         };
 
         using Client = BasicClient<Connection, SOCK_STREAM, IPPROTO_TCP>;

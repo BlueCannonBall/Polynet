@@ -214,32 +214,44 @@ namespace pn {
             }
         }
 
-        Status Server::listen(const std::function<bool(connection_type)>& cb, int backlog) {
+        Result<sockfd_t> Server::accept(struct sockaddr* addr, socklen_t* addrlen) {
+            for (;;) {
+                sockfd_t conn_fd;
+                if ((conn_fd = ::accept(fd, addr, addrlen)) != PN_INVALID_SOCKFD) {
+                    return conn_fd;
+                }
+
+                std::error_code error = last_socket_error_code();
+#ifdef _WIN32
+                if (error.value() != WSAECONNRESET) {
+                    return std::unexpected(Error {error, "accept"});
+                }
+#else
+                switch (error.value()) {
+                default:
+                    return std::unexpected(Error {error, "accept"});
+
+                case EINTR:
+                case EPERM:
+                case EPROTO:
+                case ECONNABORTED:
+                    break;
+                }
+#endif
+            }
+        }
+
+        Status Server::listen(const std::function<bool(connection_type)>& cb, int backlog) { // This function BLOCKS
             if (::listen(fd, backlog) == PN_ERROR) {
                 return std::unexpected(make_last_socket_error("listen"));
             }
 
             for (;;) {
                 connection_type conn;
-                if ((conn.fd = accept(fd, (struct sockaddr*) &conn.addr, &conn.addrlen)) == PN_INVALID_SOCKFD) {
-                    std::error_code error = last_socket_error_code();
-#ifdef _WIN32
-                    if (error.value() != WSAECONNRESET) {
-                        return std::unexpected(Error {error, "accept"});
-                    }
-                    continue;
-#else
-                    switch (error.value()) {
-                    default:
-                        return std::unexpected(Error {error, "accept"});
-
-                    case EINTR:
-                    case EPERM:
-                    case EPROTO:
-                    case ECONNABORTED:
-                        continue;
-                    }
-#endif
+                if (Result<sockfd_t> result = accept((struct sockaddr*) &conn.addr, &conn.addrlen); !result) {
+                    return std::unexpected(result.error());
+                } else {
+                    conn.fd = *result;
                 }
 
                 if (!cb(std::move(conn))) { // Connections CANNOT be accepted while the callback is blocking

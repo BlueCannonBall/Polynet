@@ -29,7 +29,7 @@ namespace pn {
         return error ? Error {ssl_error_code(error), operation} : make_polynet_error(PN_ERROR_TLS, operation);
     }
 
-    // PN_ERROR_TLS stands for the failures OpenSSL reports without describing
+    // PN_ERROR_TLS stands in for the failures OpenSSL reports without actually describing...
     inline Error take_ssl_error(StringView operation = {}) noexcept {
         if (std::error_code error = take_ssl_error_code(); error) {
             return {error, operation};
@@ -211,10 +211,18 @@ namespace pn {
         public:
             typedef TLSConnection connection_type;
 
-            using Server::listen; // Listening without a context accepts plaintext connections
             using Server::Server;
 
             Status listen(const TLSContext& context, const std::function<bool(connection_type)>& cb, int backlog = 128);
+
+            // Listening without a context accepts plaintext connections. They are still
+            // TLSConnections, which report is_secure as false and read and write in the
+            // clear, so a callback may still bring one up with tls_init of its own
+            Status listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
+
+        protected:
+            // A null context leaves the connections plaintext
+            Status listen(const TLSContext* context, const std::function<bool(connection_type)>& cb, int backlog);
         };
 
         class TLSClient : public BasicClient<TLSConnection, SOCK_STREAM, IPPROTO_TCP> {
