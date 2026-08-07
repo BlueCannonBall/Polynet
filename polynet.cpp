@@ -214,6 +214,27 @@ namespace pn {
             }
         }
 
+        Status Server::listen(const std::function<bool(connection_type)>& cb, int backlog) { // This function BLOCKS
+            if (::listen(fd, backlog) == PN_ERROR) {
+                return std::unexpected(make_last_socket_error("listen"));
+            }
+
+            for (;;) {
+                connection_type conn;
+                if (Result<sockfd_t> result = accept((struct sockaddr*) &conn.addr, &conn.addrlen); !result) {
+                    return std::unexpected(result.error());
+                } else {
+                    conn.fd = *result;
+                }
+
+                if (!cb(std::move(conn))) { // Connections CANNOT be accepted while the callback is blocking
+                    break;
+                }
+            }
+
+            return {};
+        }
+
         Result<sockfd_t> Server::accept(struct sockaddr* addr, socklen_t* addrlen) {
             for (;;) {
                 sockfd_t conn_fd;
@@ -239,27 +260,6 @@ namespace pn {
                 }
 #endif
             }
-        }
-
-        Status Server::listen(const std::function<bool(connection_type)>& cb, int backlog) { // This function BLOCKS
-            if (::listen(fd, backlog) == PN_ERROR) {
-                return std::unexpected(make_last_socket_error("listen"));
-            }
-
-            for (;;) {
-                connection_type conn;
-                if (Result<sockfd_t> result = accept((struct sockaddr*) &conn.addr, &conn.addrlen); !result) {
-                    return std::unexpected(result.error());
-                } else {
-                    conn.fd = *result;
-                }
-
-                if (!cb(std::move(conn))) { // Connections CANNOT be accepted while the callback is blocking
-                    break;
-                }
-            }
-
-            return {};
         }
     } // namespace tcp
 

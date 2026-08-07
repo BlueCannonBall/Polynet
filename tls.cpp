@@ -26,39 +26,6 @@ namespace pn {
         return category;
     }
 
-    Status TLSContext::init_server(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type) {
-        if (this->ssl_ctx) {
-            return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "create TLS context"));
-        }
-
-        ERR_clear_error();
-        SSL_CTX* ssl_ctx;
-        if (!(ssl_ctx = SSL_CTX_new(TLS_server_method()))) {
-            return std::unexpected(take_ssl_error("create TLS context"));
-        }
-
-        SSL_CTX_set_quiet_shutdown(ssl_ctx, 1);
-
-        if (SSL_CTX_use_certificate_chain_file(ssl_ctx, certificate_chain_file.c_str()) != 1) {
-            Error error = take_ssl_error("load TLS certificate chain");
-            SSL_CTX_free(ssl_ctx);
-            return std::unexpected(error);
-        }
-        if (SSL_CTX_use_PrivateKey_file(ssl_ctx, private_key_file.c_str(), private_key_file_type) != 1) {
-            Error error = take_ssl_error("load TLS private key");
-            SSL_CTX_free(ssl_ctx);
-            return std::unexpected(error);
-        }
-        if (SSL_CTX_check_private_key(ssl_ctx) != 1) {
-            Error error = take_ssl_error("check TLS private key");
-            SSL_CTX_free(ssl_ctx);
-            return std::unexpected(error);
-        }
-
-        this->ssl_ctx = ssl_ctx;
-        return {};
-    }
-
     Status TLSContext::init_client(int verify_mode, StringView ca_file, StringView ca_path) {
         if (this->ssl_ctx) {
             return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "create TLS context"));
@@ -95,6 +62,39 @@ namespace pn {
         return {};
     }
 
+    Status TLSContext::init_server(StringView certificate_chain_file, StringView private_key_file, int private_key_file_type) {
+        if (this->ssl_ctx) {
+            return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "create TLS context"));
+        }
+
+        ERR_clear_error();
+        SSL_CTX* ssl_ctx;
+        if (!(ssl_ctx = SSL_CTX_new(TLS_server_method()))) {
+            return std::unexpected(take_ssl_error("create TLS context"));
+        }
+
+        SSL_CTX_set_quiet_shutdown(ssl_ctx, 1);
+
+        if (SSL_CTX_use_certificate_chain_file(ssl_ctx, certificate_chain_file.c_str()) != 1) {
+            Error error = take_ssl_error("load TLS certificate chain");
+            SSL_CTX_free(ssl_ctx);
+            return std::unexpected(error);
+        }
+        if (SSL_CTX_use_PrivateKey_file(ssl_ctx, private_key_file.c_str(), private_key_file_type) != 1) {
+            Error error = take_ssl_error("load TLS private key");
+            SSL_CTX_free(ssl_ctx);
+            return std::unexpected(error);
+        }
+        if (SSL_CTX_check_private_key(ssl_ctx) != 1) {
+            Error error = take_ssl_error("check TLS private key");
+            SSL_CTX_free(ssl_ctx);
+            return std::unexpected(error);
+        }
+
+        this->ssl_ctx = ssl_ctx;
+        return {};
+    }
+
     namespace tcp {
         namespace {
             bool is_ip_literal(StringView hostname) {
@@ -107,44 +107,6 @@ namespace pn {
                 return false;
             }
         } // namespace
-
-        Status TLSConnection::tls_init(const TLSContext& context) {
-            if (this->ssl) {
-                return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "create TLS connection"));
-            }
-
-            ERR_clear_error();
-            SSL* ssl;
-            if (!(ssl = SSL_new(context.ssl_ctx))) {
-                return std::unexpected(take_ssl_error("create TLS connection"));
-            }
-
-            BIO* ssl_rbio = nullptr;
-            BIO* ssl_wbio = nullptr;
-            BIO* recv_bio = nullptr;
-            BIO* send_bio = nullptr;
-            if (!BIO_new_bio_pair(&ssl_rbio, buf_capacity, &recv_bio, buf_capacity) ||
-                !BIO_new_bio_pair(&send_bio, buf_capacity, &ssl_wbio, buf_capacity)) {
-                Error error = take_ssl_error("create TLS BIO pair");
-                BIO_free(ssl_rbio);
-                BIO_free(ssl_wbio);
-                BIO_free(recv_bio);
-                BIO_free(send_bio);
-                SSL_free(ssl);
-                return std::unexpected(error);
-            }
-            SSL_set0_rbio(ssl, ssl_rbio);
-            SSL_set0_wbio(ssl, ssl_wbio);
-
-            this->ssl = ssl;
-            this->recv_bio = recv_bio;
-            this->send_bio = send_bio;
-            pending.clear();
-            pending_cursor = 0;
-            fatal_ssl_error = false;
-
-            return {};
-        }
 
         // Writing ciphertext to the socket blocks for as long as the peer takes to read it,
         // and the peer may not read until this end drains what it is being sent. A receiver
@@ -238,6 +200,44 @@ namespace pn {
             return {};
         }
 
+        Status TLSConnection::tls_init(const TLSContext& context) {
+            if (this->ssl) {
+                return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "create TLS connection"));
+            }
+
+            ERR_clear_error();
+            SSL* ssl;
+            if (!(ssl = SSL_new(context.ssl_ctx))) {
+                return std::unexpected(take_ssl_error("create TLS connection"));
+            }
+
+            BIO* ssl_rbio = nullptr;
+            BIO* ssl_wbio = nullptr;
+            BIO* recv_bio = nullptr;
+            BIO* send_bio = nullptr;
+            if (!BIO_new_bio_pair(&ssl_rbio, buf_capacity, &recv_bio, buf_capacity) ||
+                !BIO_new_bio_pair(&send_bio, buf_capacity, &ssl_wbio, buf_capacity)) {
+                Error error = take_ssl_error("create TLS BIO pair");
+                BIO_free(ssl_rbio);
+                BIO_free(ssl_wbio);
+                BIO_free(recv_bio);
+                BIO_free(send_bio);
+                SSL_free(ssl);
+                return std::unexpected(error);
+            }
+            SSL_set0_rbio(ssl, ssl_rbio);
+            SSL_set0_wbio(ssl, ssl_wbio);
+
+            this->ssl = ssl;
+            this->recv_bio = recv_bio;
+            this->send_bio = send_bio;
+            pending.clear();
+            pending_cursor = 0;
+            fatal_ssl_error = false;
+
+            return {};
+        }
+
         Status TLSConnection::tls_accept() {
             SSL_set_accept_state(ssl);
             return handshake("accept TLS connection");
@@ -295,6 +295,14 @@ namespace pn {
             });
         }
 
+        Status TLSServer::listen(const TLSContext& context, const std::function<bool(connection_type)>& cb, int backlog) {
+            return listen(&context, cb, backlog);
+        }
+
+        Status TLSServer::listen(const std::function<bool(connection_type)>& cb, int backlog) {
+            return listen(nullptr, cb, backlog);
+        }
+
         Status TLSServer::listen(const TLSContext* context, const std::function<bool(connection_type)>& cb, int backlog) { // This function BLOCKS
             if (::listen(fd, backlog) == PN_ERROR) {
                 return std::unexpected(make_last_socket_error("listen"));
@@ -320,14 +328,6 @@ namespace pn {
             }
 
             return {};
-        }
-
-        Status TLSServer::listen(const TLSContext& context, const std::function<bool(connection_type)>& cb, int backlog) {
-            return listen(&context, cb, backlog);
-        }
-
-        Status TLSServer::listen(const std::function<bool(connection_type)>& cb, int backlog) {
-            return listen(nullptr, cb, backlog);
         }
 
         Status TLSClient::tls_init(const TLSContext& context, StringView hostname) {
