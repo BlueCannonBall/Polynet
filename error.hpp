@@ -57,7 +57,7 @@ namespace pn {
         std::error_code code;
         StringView operation;
 
-        operator bool() const noexcept {
+        explicit operator bool() const noexcept {
             return code.value();
         }
 

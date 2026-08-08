@@ -77,7 +77,7 @@ namespace pn {
             return ssl_ctx;
         }
 
-        operator bool() const noexcept {
+        explicit operator bool() const noexcept {
             return is_valid();
         }
     };

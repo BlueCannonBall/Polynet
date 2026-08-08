@@ -279,7 +279,7 @@ namespace pn {
             return fd != PN_INVALID_SOCKFD;
         }
 
-        operator bool() const noexcept {
+        explicit operator bool() const noexcept {
             return is_valid();
         }
 
