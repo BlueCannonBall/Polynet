@@ -202,16 +202,17 @@ namespace pn {
                                            // to which the client is connected to for clients
 
         Socket() = default;
-        Socket(sockfd_t fd) noexcept:
+        explicit Socket(sockfd_t fd) noexcept:
             fd(fd) {}
         Socket(sockfd_t fd, const struct sockaddr& addr, socklen_t addrlen) noexcept:
             fd(fd),
             addrlen(addrlen) {
             memcpy(&this->addr, &addr, addrlen);
         }
-        Socket(Socket&& socket) {
-            *this = std::move(socket);
-        }
+        Socket(Socket&& socket) noexcept:
+            fd(std::exchange(socket.fd, PN_INVALID_SOCKFD)),
+            addr(socket.addr),
+            addrlen(socket.addrlen) {}
 
         Socket& operator=(Socket&& socket) {
             if (this != &socket) {

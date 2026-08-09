@@ -46,7 +46,7 @@ namespace pn {
         SSL_CTX* ssl_ctx = nullptr;
 
         TLSContext() = default;
-        TLSContext(SSL_CTX* ssl_ctx) noexcept:
+        explicit TLSContext(SSL_CTX* ssl_ctx) noexcept:
             ssl_ctx(ssl_ctx) {}
         TLSContext(TLSContext&& context) noexcept {
             *this = std::move(context);
