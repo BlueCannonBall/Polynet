@@ -91,12 +91,12 @@ namespace pn {
                                         // socket operation may be performed while it is held
             std::mutex ssl_read_mutex;  // Serializes receivers, each of which may need several
             std::mutex ssl_write_mutex; // attempts at one SSL operation, and senders likewise
-            std::mutex send_mutex;
             std::mutex recv_mutex;
             BIO* send_bio = nullptr;
             BIO* recv_bio = nullptr;
             std::vector<char> pending;
             size_t pending_cursor = 0;
+            bool fatal_ssl_error = false;
 
             Status flush(bool receiving);
             Result<bool> fill();
@@ -168,7 +168,6 @@ namespace pn {
 
         public:
             SSL* ssl = nullptr; // Guarded by ssl_mutex during sends and receives
-            bool fatal_ssl_error = false;
 
             TLSConnection() = default;
             using Connection::Connection;

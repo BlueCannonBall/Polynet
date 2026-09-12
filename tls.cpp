@@ -115,12 +115,11 @@ namespace pn {
         // to drain the connection that the sender is waiting on. Whatever a receive leaves
         // behind goes out with the next flush from either end, as a flush empties the BIO
         Status TLSConnection::flush(bool receiving) {
-            std::unique_lock<std::mutex> sender_lock(ssl_write_mutex, std::defer_lock);
-            if (receiving && !sender_lock.try_lock()) {
+            std::unique_lock<std::mutex> lock(ssl_write_mutex, std::defer_lock);
+            if (receiving && !lock.try_lock()) {
                 return {};
             }
 
-            std::lock_guard<std::mutex> lock(send_mutex);
             for (;;) {
                 if (pending.empty()) {
                     std::lock_guard<std::mutex> lock(ssl_mutex);
@@ -261,7 +260,7 @@ namespace pn {
                 return Connection::send(buf, len);
             }
 
-            std::lock_guard<std::mutex> write_lock(ssl_write_mutex);
+            std::lock_guard<std::mutex> lock(ssl_write_mutex);
             Result<size_t> result = ssl_op("send TLS data", false, [&] {
                 return SSL_write(ssl, buf, pn::detail::clamp_transfer_len(len));
             });
@@ -278,7 +277,7 @@ namespace pn {
                 return Connection::recv(buf, len);
             }
 
-            std::lock_guard<std::mutex> read_lock(ssl_read_mutex);
+            std::lock_guard<std::mutex> lock(ssl_read_mutex);
             return ssl_op("receive TLS data", true, [&] {
                 return SSL_read(ssl, buf, pn::detail::clamp_transfer_len(len));
             });
@@ -289,7 +288,7 @@ namespace pn {
                 return Connection::peek(buf, len);
             }
 
-            std::lock_guard<std::mutex> read_lock(ssl_read_mutex);
+            std::lock_guard<std::mutex> lock(ssl_read_mutex);
             return ssl_op("peek TLS data", true, [&] {
                 return SSL_peek(ssl, buf, pn::detail::clamp_transfer_len(len));
             });
