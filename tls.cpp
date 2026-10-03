@@ -294,15 +294,15 @@ namespace pn {
             });
         }
 
-        Status TLSServer::listen(const TLSContext& context, const std::function<bool(connection_type)>& cb, int backlog) {
-            return listen(&context, cb, backlog);
+        Status TLSServer::listen(const TLSContext& context, std::move_only_function<bool(connection_type)> cb, int backlog) {
+            return listen(&context, std::move(cb), backlog);
         }
 
-        Status TLSServer::listen(const std::function<bool(connection_type)>& cb, int backlog) {
-            return listen(nullptr, cb, backlog);
+        Status TLSServer::listen(std::move_only_function<bool(connection_type)> cb, int backlog) {
+            return listen(nullptr, std::move(cb), backlog);
         }
 
-        Status TLSServer::listen(const TLSContext* context, const std::function<bool(connection_type)>& cb, int backlog) { // This function BLOCKS
+        Status TLSServer::listen(const TLSContext* context, std::move_only_function<bool(connection_type)> cb, int backlog) { // This function BLOCKS
             if (::listen(fd, backlog) == PN_ERROR) {
                 return std::unexpected(make_last_socket_error("listen"));
             }

@@ -212,16 +212,16 @@ namespace pn {
 
             using Server::Server;
 
-            Status listen(const TLSContext& context, const std::function<bool(connection_type)>& cb, int backlog = 128);
+            Status listen(const TLSContext& context, std::move_only_function<bool(connection_type)> cb, int backlog = 128);
 
             // Listening without a context accepts plaintext connections. They are still
             // TLSConnections, which report is_secure as false and read and write in the
             // clear, so a callback may still bring one up with tls_init of its own
-            Status listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
+            Status listen(std::move_only_function<bool(connection_type)> cb, int backlog = 128);
 
         protected:
             // A null context leaves the connections plaintext
-            Status listen(const TLSContext* context, const std::function<bool(connection_type)>& cb, int backlog);
+            Status listen(const TLSContext* context, std::move_only_function<bool(connection_type)> cb, int backlog);
         };
 
         class TLSClient : public BasicClient<TLSConnection, SOCK_STREAM, IPPROTO_TCP> {

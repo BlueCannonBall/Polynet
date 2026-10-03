@@ -392,7 +392,7 @@ namespace pn {
     public:
         using Base::Base;
 
-        Status connect(StringView hostname, StringView port, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
+        Status connect(StringView hostname, StringView port, std::move_only_function<bool(pn::BasicClient<Base, Socktype, Protocol>&)> config_cb = {}) {
             if (this->is_valid()) {
                 return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "connect"));
             }
@@ -444,11 +444,11 @@ namespace pn {
             return {};
         }
 
-        Status connect(StringView hostname, unsigned short port, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
-            return connect(hostname, std::to_string(port), config_cb);
+        Status connect(StringView hostname, unsigned short port, std::move_only_function<bool(pn::BasicClient<Base, Socktype, Protocol>&)> config_cb = {}) {
+            return connect(hostname, std::to_string(port), std::move(config_cb));
         }
 
-        Status connect(const struct sockaddr* addr, socklen_t addrlen, const std::function<bool(pn::BasicClient<Base, Socktype, Protocol>&)>& config_cb = {}) {
+        Status connect(const struct sockaddr* addr, socklen_t addrlen, std::move_only_function<bool(pn::BasicClient<Base, Socktype, Protocol>&)> config_cb = {}) {
             if (this->is_valid()) {
                 return std::unexpected(make_polynet_error(PN_ERROR_ALREADY_INITIALIZED, "connect"));
             }
@@ -541,7 +541,8 @@ namespace pn {
             using BasicServer<Socket, SOCK_STREAM, IPPROTO_TCP>::BasicServer;
 
             // Return false from the callback to stop listening
-            Status listen(const std::function<bool(connection_type)>& cb, int backlog = 128);
+            // Taken by value, and not const-callable, so mutable and move-only callbacks are accepted
+            Status listen(std::move_only_function<bool(connection_type)> cb, int backlog = 128);
 
         protected:
             // Retries the failures a server can carry on through, so an error from this

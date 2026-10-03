@@ -214,7 +214,7 @@ namespace pn {
             }
         }
 
-        Status Server::listen(const std::function<bool(connection_type)>& cb, int backlog) { // This function BLOCKS
+        Status Server::listen(std::move_only_function<bool(connection_type)> cb, int backlog) { // This function BLOCKS
             if (::listen(fd, backlog) == PN_ERROR) {
                 return std::unexpected(make_last_socket_error("listen"));
             }
