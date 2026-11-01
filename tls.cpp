@@ -264,7 +264,7 @@ namespace pn {
 
             std::lock_guard<std::mutex> lock(ssl_write_mutex);
             Result<size_t> result = ssl_op("send TLS data", false, [&] {
-                return SSL_write(ssl, buf, pn::detail::clamp_transfer_len(std::min(len, write_chunk)));
+                return SSL_write(ssl, buf, pn::detail::clamp_transfer_len(std::min(len, ssl_write_limit)));
             });
             if (result && !*result) { // There is nothing to send to a peer that has shut the
                                       // connection down, and reporting no progress instead of
