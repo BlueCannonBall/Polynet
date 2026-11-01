@@ -85,15 +85,22 @@ namespace pn {
     namespace tcp {
         class TLSConnection : public Connection {
         protected:
+            // How much ciphertext the receive side holds ahead of the SSL object, and so how
+            // much a single fill may take from the socket
             static constexpr size_t buf_capacity = 16'000;
+            // How much plaintext one SSL operation covers. The write BIO grows as needed, so
+            // this bounds how much ciphertext a single send can leave buffered before it
+            // blocks in flush, rather than any limit OpenSSL imposes
+            static constexpr size_t write_chunk = 16'000;
 
             std::mutex ssl_mutex;       // Guards the SSL connection and its BIOs. No blocking
                                         // socket operation may be performed while it is held
             std::mutex ssl_read_mutex;  // Serializes receivers, each of which may need several
             std::mutex ssl_write_mutex; // attempts at one SSL operation, and senders likewise
             std::mutex recv_mutex;
-            BIO* send_bio = nullptr;
             BIO* recv_bio = nullptr;
+            BIO* send_bio = nullptr;    // The SSL connection's own write BIO. It owns this, so
+                                        // it must not be freed here
             std::vector<char> pending;
             size_t pending_cursor = 0;
             bool fatal_ssl_error = false;

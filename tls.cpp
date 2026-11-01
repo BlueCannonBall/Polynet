@@ -213,14 +213,12 @@ namespace pn {
             BIO* ssl_rbio = nullptr;
             BIO* ssl_wbio = nullptr;
             BIO* recv_bio = nullptr;
-            BIO* send_bio = nullptr;
             if (!BIO_new_bio_pair(&ssl_rbio, buf_capacity, &recv_bio, buf_capacity) ||
-                !BIO_new_bio_pair(&send_bio, buf_capacity, &ssl_wbio, buf_capacity)) {
-                Error error = take_ssl_error("create TLS BIO pair");
+                !(ssl_wbio = BIO_new(BIO_s_mem()))) {
+                Error error = take_ssl_error("create TLS BIOs");
                 BIO_free(ssl_rbio);
                 BIO_free(ssl_wbio);
                 BIO_free(recv_bio);
-                BIO_free(send_bio);
                 SSL_free(ssl);
                 return std::unexpected(error);
             }
@@ -229,7 +227,8 @@ namespace pn {
 
             this->ssl = ssl;
             this->recv_bio = recv_bio;
-            this->send_bio = send_bio;
+            this->send_bio = ssl_wbio; // Borrowed. A memory BIO accepts every write, so a write
+                                       // that OpenSSL cannot finish cannot be left half delivered
             pending.clear();
             pending_cursor = 0;
             fatal_ssl_error = false;
@@ -246,7 +245,7 @@ namespace pn {
             if (ssl && (protocol_layers & PN_PROTOCOL_LAYER_TLS)) {
                 if (!fatal_ssl_error) SSL_shutdown(ssl);
                 BIO_free(std::exchange(recv_bio, nullptr));
-                BIO_free(std::exchange(send_bio, nullptr));
+                send_bio = nullptr; // Owned by the SSL connection, which frees it next
                 SSL_free(std::exchange(ssl, nullptr));
                 pending.clear();
                 pending_cursor = 0;
@@ -262,7 +261,7 @@ namespace pn {
 
             std::lock_guard<std::mutex> lock(ssl_write_mutex);
             Result<size_t> result = ssl_op("send TLS data", false, [&] {
-                return SSL_write(ssl, buf, pn::detail::clamp_transfer_len(len));
+                return SSL_write(ssl, buf, pn::detail::clamp_transfer_len(std::min(len, write_chunk)));
             });
             if (result && !*result) { // There is nothing to send to a peer that has shut the
                                       // connection down, and reporting no progress instead of
