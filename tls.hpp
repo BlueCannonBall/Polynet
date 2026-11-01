@@ -5,6 +5,7 @@
 #include <mutex>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <stdexcept>
 #include <vector>
 
 // Protocol layers
@@ -115,6 +116,10 @@ namespace pn {
             // ssl_read_mutex or ssl_write_mutex so that nothing going the same direction
             // interleaves with those retries. A zero result means the peer shut the
             // connection down cleanly, which only a receive can treat as an ordinary outcome
+            //
+            // Only a want of ciphertext is retryable. The write BIO grows with every write,
+            // so it cannot refuse data, and OpenSSL reporting that it did means a premise of
+            // this class has failed rather than that the connection is busy
             template <typename Op>
             Result<size_t> ssl_op(StringView operation, bool receiving, Op op) {
                 for (bool eof = false;;) {
@@ -123,6 +128,12 @@ namespace pn {
                     Error error;
                     {
                         std::lock_guard<std::mutex> lock(ssl_mutex);
+                        // SSL_get_error documents that after SSL_ERROR_SSL or SSL_ERROR_SYSCALL
+                        // no further I/O operations may be performed on the connection, and that
+                        // SSL_shutdown must not be called either, so the connection is finished
+                        if (fatal_ssl_error) {
+                            return std::unexpected(make_polynet_error(PN_ERROR_TLS, operation));
+                        }
                         ERR_clear_error();
                         result = op();
                         if (result <= 0) {
@@ -165,7 +176,11 @@ namespace pn {
                         continue;
                     }
                     if (ssl_error == SSL_ERROR_WANT_WRITE) {
-                        continue;
+                        // The connection is left mid-record, so it must not be used again,
+                        // and SSL_shutdown in close must not add to the damage
+                        fatal_ssl_error = true;
+                        throw std::logic_error(std::string(operation.c_str()) +
+                                               ": TLS write blocked on a memory BIO that accepts every write");
                     }
                     return std::unexpected(error);
                 }

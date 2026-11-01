@@ -131,8 +131,11 @@ namespace pn {
                     pending.resize(available);
                     int read = BIO_read(send_bio, pending.data(), available);
                     if (read <= 0) {
+                        // A memory BIO returns what it has just reported as pending, so this
+                        // is ciphertext lost rather than a connection that is merely busy
                         pending.clear();
-                        return std::unexpected(take_ssl_error("read TLS ciphertext"));
+                        fatal_ssl_error = true;
+                        throw std::logic_error("read TLS ciphertext: the memory BIO lost data it reported as pending");
                     }
                     pending.resize(read);
                     pending_cursor = 0;
