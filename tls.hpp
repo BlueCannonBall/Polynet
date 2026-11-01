@@ -141,7 +141,13 @@ namespace pn {
                             if (ssl_error != SSL_ERROR_ZERO_RETURN && ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
                                 error = take_ssl_error(operation);
                             }
-                            if (ssl_error == SSL_ERROR_SSL || ssl_error == SSL_ERROR_SYSCALL) {
+                            // A connection that has failed is finished, so nothing else may be
+                            // done with it. A write that could not be completed at all is a
+                            // broken premise of this class rather than a stall to wait out, and a
+                            // read past the peer's shutdown has nothing left to make progress
+                            // with. Everything that sets the flag does so here, holding ssl_mutex,
+                            // so that the check above and close see whole writes
+                            if (ssl_error == SSL_ERROR_SSL || ssl_error == SSL_ERROR_SYSCALL || ssl_error == SSL_ERROR_WANT_WRITE || (ssl_error == SSL_ERROR_WANT_READ && eof)) {
                                 fatal_ssl_error = true;
                             }
                         }
@@ -165,7 +171,6 @@ namespace pn {
                     }
                     if (ssl_error == SSL_ERROR_WANT_READ) {
                         if (eof) {
-                            fatal_ssl_error = true;
                             return std::unexpected(make_polynet_error(PN_ERROR_TLS, "read TLS ciphertext after EOF"));
                         }
                         if (Result<bool> received = fill(); !received) {
@@ -176,9 +181,8 @@ namespace pn {
                         continue;
                     }
                     if (ssl_error == SSL_ERROR_WANT_WRITE) {
-                        // The connection is left mid-record, so it must not be used again,
-                        // and SSL_shutdown in close must not add to the damage
-                        fatal_ssl_error = true;
+                        // The flag was set above, under ssl_mutex, so the connection refuses
+                        // further I/O and close does not add a shutdown to the damage
                         throw std::logic_error(std::string(operation.c_str()) +
                                                ": TLS write blocked on a memory BIO that accepts every write");
                     }
